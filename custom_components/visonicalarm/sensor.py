@@ -1,120 +1,311 @@
 """
 Interfaces with the Visonic Alarm sensors.
 """
+import asyncio
+import functools
 import logging
-from datetime import timedelta
 
-from . import HUB as hub
-from homeassistant.const import (STATE_ALARM_ARMED_AWAY, STATE_ALARM_ARMED_HOME)
-from homeassistant.const import (STATE_ALARM_DISARMED, STATE_UNKNOWN,
-                                 STATE_OPEN, STATE_CLOSED)
-from homeassistant.helpers.entity import Entity
+from homeassistant.const import (
+    STATE_OPEN,
+    STATE_CLOSED,
+    UnitOfTemperature,
+    TEMP_CELSIUS,
+    LIGHT_LUX,
+)
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorStateClass,
+    SensorEntity,
+)
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.core import callback
+
+from .const import (
+    CONF_PANEL_ID,
+    DOMAIN,
+    DATA,
+    SUPPORTED_SENSORS,
+    SENSOR_TYPE_FRIENDLY_NAME,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-STATE_ALARM_ARMING_EXIT_DELAY_HOME = 'arming_exit_delay_home'
-STATE_ALARM_ARMING_EXIT_DELAY_AWAY = 'arming_exit_delay_away'
-STATE_ALARM_ENTRY_DELAY = 'entry_delay'
+SENSORS = [
+    {
+        "collection": "devices",
+        "filter_param": "subtype",
+        "filter": SUPPORTED_SENSORS,
+        "name": "status",
+        "status": "state",
+        "class": "VisonicAlarmSensor",
+    },
+    {
+        "collection": "devices",
+        "filter_param": "subtype",
+        "filter": SUPPORTED_SENSORS,
+        "name": "temperature",
+        "status": "temperature",
+        "class": "VisonicAlarmSensor",
+    },
+    {
+        "collection": "devices",
+        "filter_param": "subtype",
+        "filter": SUPPORTED_SENSORS,
+        "name": "brightness",
+        "status": "brightness",
+        "class": "VisonicAlarmSensor",
+    },
+    {
+        "collection": "panel_info.partitions",
+        "name": "partition ready",
+        "status": "ready",
+    },
+]
 
-STATE_ATTR_SYSTEM_NAME = 'system_name'
-STATE_ATTR_SYSTEM_SERIAL_NUMBER = 'serial_number'
-STATE_ATTR_SYSTEM_MODEL = 'model'
-STATE_ATTR_SYSTEM_READY = 'ready'
-STATE_ATTR_SYSTEM_ACTIVE = 'active'
-STATE_ATTR_SYSTEM_CONNECTED = 'connected'
 
-CONTACT_ATTR_ZONE = 'zone'
-CONTACT_ATTR_NAME = 'name'
-CONTACT_ATTR_DEVICE_TYPE = 'device_type'
-CONTACT_ATTR_SUBTYPE = 'subtype'
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Set up the Visonic Alarm platform."""
+    coordinator = hass.data[DOMAIN][config_entry.entry_id][DATA]
+    sensors = []
 
-SCAN_INTERVAL = timedelta(seconds=10)
+    for device in coordinator.devices:
+        _LOGGER.debug(f"Found: {device.subtype}, {str(device.device_type)}")
+        if device and device.subtype and device.subtype in SUPPORTED_SENSORS:
+            _LOGGER.debug(
+                f"New device found [Type: {str(device.device_type)} {str(device.subtype)} [ID: {str(device.id)} ]"
+            )
+
+            if device.device_type == "CONTROL_PANEL":
+                _LOGGER.debug("Adding panel status sensor")
+                sensors.append(VisonicStatusSensor(coordinator, coordinator.status))
+                continue
+
+            sensors.append(VisonicAlarmSensor(coordinator, device, "state"))
+
+            if hasattr(device, "temperature"):
+                sensors.append(
+                    VisonicAlarmTemperatureSensor(coordinator, device, "temperature")
+                )
+
+            if hasattr(device, "brightness"):
+                sensors.append(VisonicAlarmLuxSensor(coordinator, device, "brightness"))
+
+    async_add_entities(sensors)
 
 
-def setup_platform(hass, config, add_devices, discovery_info=None):
-    """Setup the Visonic Alarm platform."""
-    hub.update()
+class VisonicAlarmSensor(CoordinatorEntity, SensorEntity):
+    """Implementation of a Visonic Alarm Contact sensor."""
 
-    for device in hub.alarm.devices:
-        if device is not None:
-            if device.subtype is not None:
-                if 'CONTACT' in device.subtype or device.subtype == 'MOTION_CAMERA' or device.subtype == 'MOTION' or device.subtype == 'MOTION_DUAL' or device.subtype == 'MOTION_V_ANTIMASK' or device.subtype == 'CURTAIN':
-                    _LOGGER.debug("New device found [Type:" + str(device.subtype) + "] [ID:" + str(device.id) + "]")
-                    add_devices([VisonicAlarmContact(hub.alarm, device.id)], True)
+    def __init__(self, coordinator, device, sensor_type=None, status=None):
+        """Initialize the sensor"""
+        super().__init__(coordinator)
+        self._device = device
+        self._alarm = coordinator
+        self._sensor_type = sensor_type
+        self._status = status
 
+    def get_attrs(self, defined_attrs: list) -> dict:
+        attrs = {}
+        for attr in defined_attrs:
+            if hasattr(self._device, attr):
+                attrs[attr] = getattr(self._device, attr)
+        return attrs
 
-class VisonicAlarmContact(Entity):
-    """ Implementation of a Visonic Alarm Contact sensor. """
+    def get_base_name(self):
+        if self._device.subtype in SENSOR_TYPE_FRIENDLY_NAME:
+            name = f"{SENSOR_TYPE_FRIENDLY_NAME[self._device.subtype]}"
+        else:
+            name = f"{self._device.subtype}"
 
-    def __init__(self, alarm, contact_id):
-        """ Initialize the sensor """
-        self._state = STATE_UNKNOWN
-        self._alarm = alarm
-        self._id = contact_id
-        self._name = None
-        self._zone = None
-        self._device_type = None
-        self._subtype = None
+        if hasattr(self._device, "location") and self._device.location:
+            name = f"{self._device.location} {name}"
+
+        if SENSOR_TYPE_FRIENDLY_NAME[self._device.subtype] == "Keyfob":
+            if hasattr(self._device, "owner_name"):
+                name = f"{name} {self._device.owner_name}"
+            else:
+                name = f"{name} {self._device.device_number}"
+
+        return name
 
     @property
     def name(self):
-        """ Return the name of the sensor """
-        return 'Visonic Alarm ' + str(self._id)
+        """Return the name of the sensor"""
+        if self._sensor_type:
+            return f"{self.get_base_name()} {str(self._sensor_type).capitalize()}"
+
+        return self.get_base_name()
 
     @property
     def unique_id(self):
-        return self._id
+        return f"{DOMAIN}-{self._alarm.panel_info.serial}-{self._device.id}{self._sensor_type}"
 
     @property
     def state_attributes(self):
         """Return the state attributes of the alarm system."""
+        defined_attrs = ["location", "name", "device_type", "subtype", "zone_type"]
+        return self.get_attrs(defined_attrs)
+
+    @property
+    def device_info(self):
         return {
-            CONTACT_ATTR_ZONE: self._zone,
-            CONTACT_ATTR_NAME: self._name,
-            CONTACT_ATTR_DEVICE_TYPE: self._device_type,
-            CONTACT_ATTR_SUBTYPE: self._subtype
+            "name": self.get_base_name(),
+            "identifiers": {
+                (DOMAIN, f"{self.coordinator.panel_info.serial}-{self._device.id}")
+            },
+            "manufacturer": "Visonic",
+            "model": self._device.subtype
+            if self._device.subtype != "VISONIC_PANEL"
+            else self.coordinator.panel_info.model,
+            "serial_number": self._device.id,
+            "product_type": self._device.subtype,
+            "product_identifier": self._device.id,
+            "via_device": (DOMAIN, self.coordinator.config_entry.data[CONF_PANEL_ID]),
         }
 
     @property
     def icon(self):
-        """ Return icon """
+        """Return icon"""
         icon = None
-        if self._state == STATE_CLOSED:
-            icon = 'mdi:door-closed'
-        elif self._state == STATE_OPEN:
-            icon = 'mdi:door-open'
+        if self.state == STATE_CLOSED:
+            icon = "mdi:door-closed"
+        elif self.state == STATE_OPEN:
+            icon = "mdi:door-open"
         return icon
 
     @property
     def state(self):
-        """ Return the state of the sensor. """
-        return self._state
+        """Return the state of the sensor."""
+        return (
+            getattr(self._device, self._sensor_type)
+            if hasattr(self._device, self._sensor_type)
+            else "Unknown"
+        )
 
-    def update(self):
-        """ Get the latest data """
+    async def async_force_update(self, delay: int = 0):
+        _LOGGER.debug(f"Alarm update initiated by {self.name}")
+        if delay:
+            await asyncio.sleep(delay)
+        await self.coordinator.async_refresh()
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        # _LOGGER.debug(f"{self.name} updating")
+        """Get the latest data"""
         try:
-            hub.update()
+            self._device = self.coordinator.get_device_by_id(self._device.id)
+            self.async_write_ha_state()
 
-            device = self._alarm.get_device_by_id(self._id)
-
-            status = device.state
-
-            if status is None:
-                _LOGGER.warning("Device could not be found: %s.", self._id)
-                return
-
-            if status == 'opened':
-                self._state = STATE_OPEN
-            elif status == 'closed':
-                self._state = STATE_CLOSED
-            else:
-                self._state = STATE_UNKNOWN
-
-            self._zone = device.zone
-            self._name = device.name
-            self._device_type = device.device_type
-            self._subtype = device.subtype
-
-            _LOGGER.debug("Device state updated to %d W", self._state)
         except OSError as error:
-            _LOGGER.warning("Could not update the device information: %s", error)
+            _LOGGER.warning(f"Could not update the device information: {error}")
+
+
+class VisonicAlarmTemperatureSensor(VisonicAlarmSensor):
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return float(self._device.temperature)
+
+    @property
+    def state_attributes(self):
+        return {}
+
+    @property
+    def device_class(self):
+        return SensorDeviceClass.TEMPERATURE
+
+    @property
+    def state_class(self):
+        return SensorStateClass.MEASUREMENT
+
+    @property
+    def native_value(self):
+        """Return the state of the entity."""
+        return self.state
+
+    @property
+    def native_unit_of_measurement(self):
+        return TEMP_CELSIUS  # UnitOfTemperature.CELCIUS
+
+
+class VisonicAlarmLuxSensor(VisonicAlarmSensor):
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return float(self._device.brightness)
+
+    @property
+    def state_attributes(self):
+        return {}
+
+    @property
+    def device_class(self):
+        return SensorDeviceClass.ILLUMINANCE
+
+    @property
+    def state_class(self):
+        return SensorStateClass.MEASUREMENT
+
+    @property
+    def native_value(self):
+        """Return the state of the entity."""
+        return self.state
+
+    @property
+    def native_unit_of_measurement(self):
+        return LIGHT_LUX  # UnitOfTemperature.CELCIUS
+
+
+class VisonicStatusSensor(VisonicAlarmSensor):
+    @property
+    def name(self):
+        """Return the name of the sensor"""
+        return f"Partition Ready"
+
+    @property
+    def unique_id(self):
+        return f"{DOMAIN}-{self._alarm.panel_info.serial}-{self.name}"
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return self._device.partitions[0].ready
+
+    @property
+    def state_attributes(self):
+        return {}
+
+    @property
+    def native_value(self):
+        """Return the state of the entity."""
+        return self.state
+
+    @property
+    def device_info(self):
+        return {
+            "name": self.name,
+            "identifiers": {(DOMAIN, f"{self.coordinator.panel_info.serial}")},
+            "manufacturer": "Visonic",
+            "model": self.coordinator.panel_info.model,
+            "serial_number": self.coordinator.panel_info.serial,
+            "product_type": "Alarm Panel",
+            "product_identifier": self.coordinator.panel_info.model,
+            "via_device": (DOMAIN, self.coordinator.config_entry.data[CONF_PANEL_ID]),
+        }
+
+    async def async_force_update(self, delay: int = 0):
+        _LOGGER.debug(f"Alarm update initiated by {self.name}")
+        if delay:
+            await asyncio.sleep(delay)
+        await self.coordinator.async_refresh()
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        # _LOGGER.debug(f"{self.name} updating")
+        """Get the latest data"""
+        try:
+            self._device = self.coordinator.status
+            self.async_write_ha_state()
+
+        except OSError as error:
+            _LOGGER.warning(f"Could not update the device information: {error}")

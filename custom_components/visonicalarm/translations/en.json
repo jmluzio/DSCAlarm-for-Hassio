@@ -1,0 +1,48 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Visonic Alarm Setup",
+        "description": "Please enter the required configuration parameters",
+        "data": {
+          "host": "Hostname",
+          "email": "Email Address",
+          "password": "Password",
+          "uuid": "App ID",
+          "panel_id": "Panel ID",
+          "partition": "Partition",
+          "code": "User Code"
+        }
+      },
+      "panel": {
+        "title": "Visonic Alarm Setup",
+        "description": "Please select the panel and enter your pin code",
+        "data": {
+          "panel_id": "Panel ID",
+          "code": "User Code"
+        }
+      }
+    },
+    "abort": {
+      "already_in_progress": "Visonic Alarm configuration is already in progress.",
+      "already_configured": "This device is already configured."
+    },
+    "error": {
+      "unknown": "Unknown error connecting to the Visonic Alarm.  Please check the logs.",
+      "temporary_block": "Error logging into panel caused by temporary block due to too many failed logins.  Please try again in a few minutes."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Visonic Alarm Options",
+        "description": "Select parameters to amend",
+        "data": {
+          "pin_required_arm": "Pin required to arm",
+          "pin_required_disarm": "Pin required to disarm"
+        }
+      }
+    }
+  }
+}

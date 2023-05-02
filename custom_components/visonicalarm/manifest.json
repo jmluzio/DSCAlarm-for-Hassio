@@ -1,12 +1,11 @@
 {
   "domain": "visonicalarm",
-  "name": "Visonic/Bentel/Tyco Alarm System",
-  "documentation": "https://github.com/And3rsL/VisonicAlarm-for-Hassio",
-  "version": "v3.0.3",
-  "requirements": [
-    "visonicalarm2==3.1.2",
-    "python-dateutil==2.7.3"
-  ],
+  "name": "Visonic Alarm System",
+  "config_flow": true,
+  "documentation": "https://github.com/msp1974/VisonicAlarm-for-Hassio",
+  "iot_class": "cloud_polling",
+  "version": "v1.0.0",
+  "requirements": ["pyvisonicalarm==0.1.0b1"],
   "dependencies": [],
-  "codeowners": ["@And3rsL"]
+  "codeowners": ["@msp1974"]
 }
