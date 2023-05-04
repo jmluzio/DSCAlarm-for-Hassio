@@ -3,8 +3,8 @@ Interfaces with the Visonic Alarm control panel.
 """
 import asyncio
 import logging
-from time import sleep
 from datetime import timedelta
+from custom_components.visonicalarm.helper import async_wait_for_process_success
 
 from homeassistant.components.alarm_control_panel import AlarmControlPanelEntity
 import homeassistant.components.persistent_notification as pn
@@ -29,7 +29,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.system_info import async_get_system_info
 
 from . import CONF_USER_CODE, CONF_EVENT_HOUR_OFFSET, CONF_NO_PIN_REQUIRED
-from .const import CONF_PANEL_ID, DOMAIN, DATA
+from .const import CONF_PANEL_ID, DOMAIN, DATA, PROCESS_TIMEOUT
 
 SUPPORT_VISONIC = (
     AlarmControlPanelEntityFeature.ARM_HOME
@@ -50,7 +50,6 @@ ATTR_CHANGED_TIMESTAMP = "changed_timestamp"
 ATTR_ALARMS = "alarm"
 
 SCAN_INTERVAL = timedelta(seconds=10)
-TIMEOUT = 60
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -140,14 +139,13 @@ class VisonicAlarm(AlarmControlPanelEntity, CoordinatorEntity):
         self._partition = self.coordinator.get_partition_status(
             self.coordinator._partition_id
         )
-        self._no_pin_required = False  # data[CONF_NO_PIN_REQUIRED]
         self._changed_by = None
         self._changed_timestamp = None
         self._event_hour_offset = self.coordinator.config_entry.data.get(
             CONF_EVENT_HOUR_OFFSET, 0
         )
-        self._disarming = False
-        self._transaction_in_progress = False
+        # self._disarming = False
+        # self._transaction_in_progress = False
         self._arm_in_progress = False
         self._disarm_in_progress = False
         self._partition_id = coordinator._partition_id
@@ -156,7 +154,7 @@ class VisonicAlarm(AlarmControlPanelEntity, CoordinatorEntity):
     @property
     def name(self):
         """Return the name of the device."""
-        return f"Alarm Panel - {self.coordinator.panel_info.serial}"
+        return f"Alarm Panel {self.coordinator.panel_info.serial}"
 
     @property
     def unique_id(self):
@@ -289,122 +287,61 @@ class VisonicAlarm(AlarmControlPanelEntity, CoordinatorEntity):
                 )
                 return
 
-        await self.set_and_monitor_for_status(AlarmAction.DISARM)
+        process_token = await self.hass.async_add_executor_job(self._alarm.disarm)
+        self._disarm_in_progress = True
+        self._state = STATE_ALARM_DISARMING
+        self.async_write_ha_state()
+
+        if await async_wait_for_process_success(self.coordinator, process_token):
+            self._disarm_in_progress = False
+            await self.async_force_update()
+        else:
+            _LOGGER.error(f"Alarm disarming did not complete successfully.")
 
     async def async_alarm_arm_home(self, code=None):
         """Send arm home command."""
-        if self.coordinator.pin_required_arm:
-            if code != self._code:
-                pn.async_create(
-                    self._hass, "You entered the wrong arm code.", title="Arm Failed"
-                )
-                return
-
-        await self.set_and_monitor_for_status(AlarmAction.ARM_HOME)
+        await self.async_alarm_arm(AlarmAction.ARM_HOME, code)
 
     async def async_alarm_arm_away(self, code=None):
         """Send arm away command."""
+        await self.async_alarm_arm(AlarmAction.ARM_AWAY, code)
+
+    async def async_alarm_arm(self, action: AlarmAction, code):
         if self.coordinator.pin_required_arm and code != self._code:
             pn.async_create(
                 self._hass, "You entered the wrong arm code.", title="Arm Failed"
             )
             return
 
-        await self.set_and_monitor_for_status(AlarmAction.ARM_AWAY)
+        # Get current status of partition
+        await self.coordinator.async_update_status()
+        partition = self.coordinator.get_partition_status(self._partition_id)
 
-    async def set_and_monitor_for_status(self, action: AlarmAction) -> str:
-        """Send command and monitor status"""
-        success = False
-
-        _LOGGER.debug(
-            f"Alarm {action} requested. Partition ready - {self._partition.ready}"
-        )
-
-        if self._partition.ready:
+        if partition.ready:
             try:
                 if action == AlarmAction.ARM_HOME:
                     process_token = await self.hass.async_add_executor_job(
                         self._alarm.arm_home
                     )
-                    self._arm_in_progress = True
-                    self._state = STATE_ALARM_ARMING
                 elif action == AlarmAction.ARM_AWAY:
                     process_token = await self.hass.async_add_executor_job(
                         self._alarm.arm_away
                     )
-                    self._arm_in_progress = True
-                    self._state = STATE_ALARM_ARMING
-                elif action == AlarmAction.DISARM:
-                    process_token = await self.hass.async_add_executor_job(
-                        self._alarm.disarm
-                    )
-                    self._disarm_in_progress = True
-                    self._state = STATE_ALARM_DISARMING
 
+                self._arm_in_progress = True
+                self._state = STATE_ALARM_ARMING
                 self.async_write_ha_state()
 
-                state = self._state
-                timeout = 0
-
-                # Monitor for process error
-                while timeout <= TIMEOUT:
-                    try:
-                        process_status = await self.coordinator.get_process_status(
-                            process_token
-                        )
-
-                        await self.coordinator.async_update_status()
-
-                        partition = self.coordinator.get_partition_status(
-                            self._partition_id
-                        )
-
-                        # If disarmed while arming
-                        if self._disarm_in_progress and action in [
-                            AlarmAction.ARM_HOME,
-                            AlarmAction.ARM_AWAY,
-                        ]:
-                            _LOGGER.debug(f"{action} cancelled by disarm command")
-                            # Return here and do not set transaction_in_progress to False as disarm running
-                            self._arm_in_progress = False
-                            return
-
-                        # Do checks
-                        if process_status.error:
-                            _LOGGER.error(
-                                f"Aborting {action} due to process error. Error is {process_status.error}"
-                            )
-                            break
-
-                        # Set arming/disarming
-                        if process_status.status == "succeeded":
-                            state = self.get_partition_state(partition)
-                            if action in [AlarmAction.ARM_HOME, AlarmAction.ARM_AWAY]:
-                                self._arm_in_progress = False
-                            else:
-                                self._disarm_in_progress = False
-                            success = True
-
-                        if state != self._state:
-                            self._state = state
-                            self.async_write_ha_state()
-
-                        if success:
-                            break
-
-                    except Exception as ex:
-                        _LOGGER.error(f"Unknown exception - {ex}")
-
-                    await asyncio.sleep(2)
-                    timeout += 2
-
-                if timeout >= TIMEOUT:
-                    _LOGGER.debug(f"Alarm {action} did not complete within timeout")
+                if await async_wait_for_process_success(
+                    self.coordinator, process_token
+                ):
+                    self._arm_in_progress = False
+                    await self.async_force_update()
+                else:
+                    _LOGGER.error(f"{action} did not complete successfully.")
 
             except Exception as ex:
                 _LOGGER.error(f"Unable to complete {action}.  Error is {ex}")
-
-            await self.async_force_update()
         else:
             pn.async_create(
                 self._hass,

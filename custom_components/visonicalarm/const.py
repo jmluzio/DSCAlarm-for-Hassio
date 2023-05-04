@@ -4,7 +4,7 @@ CONF_PARTITION = "partition"
 CONF_PIN_REQUIRED_ARM = "pin_required_arm"
 CONF_PIN_REQUIRED_DISARM = "pin_required_disarm"
 
-
+PROCESS_TIMEOUT = 60
 DEFAUL_SCAN_INTERVAL = 30
 
 DATA = "data"

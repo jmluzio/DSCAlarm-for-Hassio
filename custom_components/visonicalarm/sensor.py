@@ -283,14 +283,15 @@ class VisonicStatusSensor(VisonicAlarmSensor):
     @property
     def device_info(self):
         return {
-            "name": self.name,
-            "identifiers": {(DOMAIN, f"{self.coordinator.panel_info.serial}")},
+            "name": f"Alarm Panel",
+            "identifiers": {
+                (DOMAIN, f"{self.coordinator.config_entry.data[CONF_PANEL_ID]}")
+            },
             "manufacturer": "Visonic",
             "model": self.coordinator.panel_info.model,
             "serial_number": self.coordinator.panel_info.serial,
             "product_type": "Alarm Panel",
             "product_identifier": self.coordinator.panel_info.model,
-            "via_device": (DOMAIN, self.coordinator.config_entry.data[CONF_PANEL_ID]),
         }
 
     async def async_force_update(self, delay: int = 0):
