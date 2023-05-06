@@ -4,7 +4,7 @@ Interfaces with the Visonic Alarm control panel.
 import asyncio
 import logging
 from datetime import timedelta
-from custom_components.visonicalarm.helper import async_wait_for_process_success
+from .entity import BaseVisonicEntity
 
 from homeassistant.components.alarm_control_panel import AlarmControlPanelEntity
 import homeassistant.components.persistent_notification as pn
@@ -27,6 +27,7 @@ from homeassistant.components.alarm_control_panel.const import (
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.system_info import async_get_system_info
+from homeassistant.exceptions import HomeAssistantError, Unauthorized, UnknownUser
 
 from . import CONF_USER_CODE, CONF_EVENT_HOUR_OFFSET, CONF_NO_PIN_REQUIRED
 from .const import CONF_PANEL_ID, DOMAIN, DATA, PROCESS_TIMEOUT
@@ -126,7 +127,7 @@ class Status:
     FAILED = 1
 
 
-class VisonicAlarm(AlarmControlPanelEntity, CoordinatorEntity):
+class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity):
     """Representation of a Visonic Alarm control panel."""
 
     def __init__(self, coordinator, hass):
@@ -270,6 +271,8 @@ class VisonicAlarm(AlarmControlPanelEntity, CoordinatorEntity):
                 return STATE_ALARM_ARMED_HOME
             elif state == AlarmState.DISARM:
                 return STATE_ALARM_DISARMED
+            elif state == AlarmStatus.ALARM:
+                return STATE_ALARM_TRIGGERED
 
     @property
     def supported_features(self) -> int:
@@ -280,19 +283,16 @@ class VisonicAlarm(AlarmControlPanelEntity, CoordinatorEntity):
         """Send disarm command."""
         if self.coordinator.pin_required_disarm:
             if code != self._code:
-                pn.async_create(
-                    self._hass,
-                    "You entered the wrong disarm code.",
-                    title="Disarm Failed",
+                raise HomeAssistantError(
+                    f"Pin is required to disarm this alarm but no pin was provided"
                 )
-                return
 
         process_token = await self.hass.async_add_executor_job(self._alarm.disarm)
         self._disarm_in_progress = True
         self._state = STATE_ALARM_DISARMING
         self.async_write_ha_state()
 
-        if await async_wait_for_process_success(self.coordinator, process_token):
+        if await self.async_wait_for_process_success(self.coordinator, process_token):
             self._disarm_in_progress = False
             await self.async_force_update()
         else:
@@ -308,10 +308,9 @@ class VisonicAlarm(AlarmControlPanelEntity, CoordinatorEntity):
 
     async def async_alarm_arm(self, action: AlarmAction, code):
         if self.coordinator.pin_required_arm and code != self._code:
-            pn.async_create(
-                self._hass, "You entered the wrong arm code.", title="Arm Failed"
+            raise HomeAssistantError(
+                f"Pin is required to arm this alarm but no pin was provided"
             )
-            return
 
         # Get current status of partition
         await self.coordinator.async_update_status()
@@ -332,16 +331,18 @@ class VisonicAlarm(AlarmControlPanelEntity, CoordinatorEntity):
                 self._state = STATE_ALARM_ARMING
                 self.async_write_ha_state()
 
-                if await async_wait_for_process_success(
+                if await self.async_wait_for_process_success(
                     self.coordinator, process_token
                 ):
                     self._arm_in_progress = False
                     await self.async_force_update()
                 else:
                     _LOGGER.error(f"{action} did not complete successfully.")
+                    raise HomeAssistantError(f"There was an error setting the alarm")
 
             except Exception as ex:
                 _LOGGER.error(f"Unable to complete {action}.  Error is {ex}")
+                raise HomeAssistantError(f"Unknown error setting the alarm")
         else:
             pn.async_create(
                 self._hass,

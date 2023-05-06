@@ -104,9 +104,7 @@ class VisonicAlarmFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             try:
-                user_input[
-                    CONF_UUID
-                ] = "a11e5472-def1-11ed-b5ea-0242ac120002"  # str(uuid.uuid4())
+                user_input[CONF_UUID] = str(uuid.uuid4())
                 self.user_session = await self.validate_user_login(user_input)
             except LoginTemporaryBlockedError as ex:
                 errors["base"] = "temporary_block"

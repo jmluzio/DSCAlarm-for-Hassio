@@ -4,6 +4,7 @@ Interfaces with the Visonic Alarm sensors.
 import asyncio
 import functools
 import logging
+from .entity import BaseVisonicEntity
 
 from homeassistant.const import (
     STATE_OPEN,
@@ -93,7 +94,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities(sensors)
 
 
-class VisonicAlarmSensor(CoordinatorEntity, SensorEntity):
+class VisonicAlarmSensor(BaseVisonicEntity, CoordinatorEntity, SensorEntity):
     """Implementation of a Visonic Alarm Contact sensor."""
 
     def __init__(self, coordinator, device, sensor_type=None, status=None):
@@ -111,30 +112,13 @@ class VisonicAlarmSensor(CoordinatorEntity, SensorEntity):
                 attrs[attr] = getattr(self._device, attr)
         return attrs
 
-    def get_base_name(self):
-        if self._device.subtype in SENSOR_TYPE_FRIENDLY_NAME:
-            name = f"{SENSOR_TYPE_FRIENDLY_NAME[self._device.subtype]}"
-        else:
-            name = f"{self._device.subtype}"
-
-        if hasattr(self._device, "location") and self._device.location:
-            name = f"{self._device.location} {name}"
-
-        if SENSOR_TYPE_FRIENDLY_NAME[self._device.subtype] == "Keyfob":
-            if hasattr(self._device, "owner_name"):
-                name = f"{name} {self._device.owner_name}"
-            else:
-                name = f"{name} {self._device.device_number}"
-
-        return name
-
     @property
     def name(self):
         """Return the name of the sensor"""
         if self._sensor_type:
-            return f"{self.get_base_name()} {str(self._sensor_type).capitalize()}"
+            return f"{self.get_base_name(self._device)} {str(self._sensor_type).capitalize()}"
 
-        return self.get_base_name()
+        return self.get_base_name(self._device)
 
     @property
     def unique_id(self):
@@ -149,7 +133,7 @@ class VisonicAlarmSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self):
         return {
-            "name": self.get_base_name(),
+            "name": self.get_base_name(self._device),
             "identifiers": {
                 (DOMAIN, f"{self.coordinator.panel_info.serial}-{self._device.id}")
             },
@@ -208,7 +192,10 @@ class VisonicAlarmTemperatureSensor(VisonicAlarmSensor):
 
     @property
     def state_attributes(self):
-        return {}
+        attrs = {}
+        if hasattr(self._device, "temperature_last_updated"):
+            attrs["last_updated"] = self._device.temperature_last_updated
+        return attrs
 
     @property
     def device_class(self):
@@ -236,7 +223,10 @@ class VisonicAlarmLuxSensor(VisonicAlarmSensor):
 
     @property
     def state_attributes(self):
-        return {}
+        attrs = {}
+        if hasattr(self._device, "brightness_last_updated"):
+            attrs["last_updated"] = self._device.brightness_last_updated
+        return attrs
 
     @property
     def device_class(self):
