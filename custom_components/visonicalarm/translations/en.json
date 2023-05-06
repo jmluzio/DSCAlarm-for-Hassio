@@ -39,6 +39,7 @@
         "title": "Visonic Alarm Options",
         "description": "Select parameters to amend",
         "data": {
+          "scan_interval": "Update interval",
           "pin_required_arm": "Pin required to arm",
           "pin_required_disarm": "Pin required to disarm"
         }
