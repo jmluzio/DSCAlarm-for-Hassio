@@ -7,10 +7,8 @@ from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.components.switch import SwitchEntity
 from .const import (
-    CONF_PANEL_ID,
     DOMAIN,
     DATA,
-    SENSOR_TYPE_FRIENDLY_NAME,
     SUPPORTED_SENSORS,
 )
 
@@ -187,21 +185,6 @@ class VisonicAlarmPanelSwitch(VisonicAlarmSwitch):
     @property
     def unique_id(self):
         return f"{DOMAIN}-{self.coordinator.panel_info.serial}-{self._switch_type}"
-
-    @property
-    def device_info(self):
-        return {
-            "name": self.get_base_name(self._device),
-            "identifiers": {
-                (DOMAIN, f"{self.coordinator.config_entry.data[CONF_PANEL_ID]}")
-            },
-            "manufacturer": "Visonic",
-            "model": self.coordinator.panel_info.model,
-            "serial_number": self.coordinator.panel_info.serial,
-            "product_type": "Alarm Panel",
-            "product_identifier": self.coordinator.panel_info.model,
-            "via_device": (DOMAIN, self.coordinator.config_entry.data[CONF_PANEL_ID]),
-        }
 
     @property
     def icon(self):

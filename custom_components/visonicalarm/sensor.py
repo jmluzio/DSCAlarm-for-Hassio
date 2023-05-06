@@ -2,7 +2,6 @@
 Interfaces with the Visonic Alarm sensors.
 """
 import asyncio
-import functools
 import logging
 from .entity import BaseVisonicEntity
 
@@ -30,38 +29,6 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-SENSORS = [
-    {
-        "collection": "devices",
-        "filter_param": "subtype",
-        "filter": SUPPORTED_SENSORS,
-        "name": "status",
-        "status": "state",
-        "class": "VisonicAlarmSensor",
-    },
-    {
-        "collection": "devices",
-        "filter_param": "subtype",
-        "filter": SUPPORTED_SENSORS,
-        "name": "temperature",
-        "status": "temperature",
-        "class": "VisonicAlarmSensor",
-    },
-    {
-        "collection": "devices",
-        "filter_param": "subtype",
-        "filter": SUPPORTED_SENSORS,
-        "name": "brightness",
-        "status": "brightness",
-        "class": "VisonicAlarmSensor",
-    },
-    {
-        "collection": "panel_info.partitions",
-        "name": "partition ready",
-        "status": "ready",
-    },
-]
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -177,7 +144,9 @@ class VisonicAlarmTemperatureSensor(VisonicAlarmSensor):
     def state_attributes(self):
         attrs = {}
         if hasattr(self._device, "temperature_last_updated"):
-            attrs["last_updated"] = self._device.temperature_last_updated
+            attrs["last_updated"] = self.convert_to_local_datetime(
+                self._device.temperature_last_updated
+            )
         return attrs
 
     @property
@@ -208,7 +177,9 @@ class VisonicAlarmLuxSensor(VisonicAlarmSensor):
     def state_attributes(self):
         attrs = {}
         if hasattr(self._device, "brightness_last_updated"):
-            attrs["last_updated"] = self._device.brightness_last_updated
+            attrs["last_updated"] = self.convert_to_local_datetime(
+                self._device.brightness_last_updated
+            )
         return attrs
 
     @property

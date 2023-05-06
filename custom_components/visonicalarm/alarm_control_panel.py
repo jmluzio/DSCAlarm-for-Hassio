@@ -3,7 +3,6 @@ Interfaces with the Visonic Alarm control panel.
 """
 import asyncio
 import logging
-from datetime import timedelta
 from .entity import BaseVisonicEntity
 
 from homeassistant.components.alarm_control_panel import AlarmControlPanelEntity
@@ -19,18 +18,15 @@ from homeassistant.const import (
     STATE_ALARM_TRIGGERED,
     CONF_CODE,
 )
-from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.components.alarm_control_panel.const import (
     CodeFormat,
     AlarmControlPanelEntityFeature,
 )
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.helpers.system_info import async_get_system_info
-from homeassistant.exceptions import HomeAssistantError, Unauthorized, UnknownUser
+from homeassistant.exceptions import HomeAssistantError
 
-from . import CONF_USER_CODE, CONF_EVENT_HOUR_OFFSET, CONF_NO_PIN_REQUIRED
-from .const import CONF_PANEL_ID, DOMAIN, DATA, PROCESS_TIMEOUT
+from .const import DOMAIN, DATA
 
 SUPPORT_VISONIC = (
     AlarmControlPanelEntityFeature.ARM_HOME
@@ -49,8 +45,6 @@ ATTR_SYSTEM_LAST_UPDATE = "last_update"
 ATTR_CHANGED_BY = "changed_by"
 ATTR_CHANGED_TIMESTAMP = "changed_timestamp"
 ATTR_ALARMS = "alarm"
-
-SCAN_INTERVAL = timedelta(seconds=10)
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -91,13 +85,6 @@ class AlarmAction:
     ARM_AWAY = "ARM_AWAY"
 
 
-AlarmEndState = {
-    "DISARM": "DISARM",
-    "ARM_HOME": "HOME",
-    "ARM_AWAY": "AWAY",
-}
-
-
 class AlarmStatus:
     EXIT = "EXIT"
     ENTRYDELAY = "ENTRYDELAY"
@@ -108,23 +95,6 @@ class AlarmState:
     DISARM = "DISARM"
     AWAY = "AWAY"
     HOME = "HOME"
-
-
-AlarmState1 = {
-    "AWAY": STATE_ALARM_ARMED_AWAY,
-    "HOME": STATE_ALARM_ARMED_HOME,
-    "DISARM": STATE_ALARM_DISARMED,
-    "DISARMING": STATE_ALARM_DISARMING,
-    "ARMING": STATE_ALARM_ARMING,
-    "PENDING": STATE_ALARM_PENDING,
-    "ALARM": STATE_ALARM_TRIGGERED,
-    "EXIT": STATE_ALARM_PENDING,
-}
-
-
-class Status:
-    SUCCESS = 0
-    FAILED = 1
 
 
 class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity):
@@ -142,11 +112,6 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
         )
         self._changed_by = None
         self._changed_timestamp = None
-        self._event_hour_offset = self.coordinator.config_entry.data.get(
-            CONF_EVENT_HOUR_OFFSET, 0
-        )
-        # self._disarming = False
-        # self._transaction_in_progress = False
         self._arm_in_progress = False
         self._disarm_in_progress = False
         self._partition_id = coordinator._partition_id

@@ -1,3 +1,5 @@
+from datetime import datetime
+from dateutil import tz
 import logging
 import asyncio
 from .const import CONF_PANEL_ID, DOMAIN, PROCESS_TIMEOUT, SENSOR_TYPE_FRIENDLY_NAME
@@ -25,6 +27,11 @@ class BaseVisonicEntity:
                 name = f"{name} {device.device_number}"
 
         return name
+
+    def convert_to_local_datetime(self, dt: datetime) -> datetime:
+        utc = datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S")
+        utc = utc.replace(tzinfo=tz.tzutc())
+        return utc.astimezone(tz.tzlocal())
 
     async def async_wait_for_process_success(self, coordinator, process_token) -> bool:
         timeout = 0

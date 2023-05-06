@@ -2,13 +2,12 @@
 Config Flow for Visonic Alarm.
 @msp1974
 """
-from typing import Any
 import uuid
 import voluptuous as vol
 from pyvisonicalarm import alarm as VisonicAlarm
 from pyvisonicalarm.exceptions import LoginTemporaryBlockedError
 
-from homeassistant import config_entries, exceptions
+from homeassistant import config_entries
 from homeassistant.helpers.selector import selector
 from homeassistant.core import callback
 from homeassistant.const import (
