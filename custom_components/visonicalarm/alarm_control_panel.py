@@ -288,16 +288,16 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
                     self._arm_in_progress = False
                     await self.async_force_update()
                 else:
+                    self._arm_in_progress = False
                     _LOGGER.error(f"{action} did not complete successfully.")
                     raise HomeAssistantError(f"There was an error setting the alarm")
 
+            except HomeAssistantError:
+                pass
             except Exception as ex:
                 _LOGGER.error(f"Unable to complete {action}.  Error is {ex}")
                 raise HomeAssistantError(f"Unknown error setting the alarm")
         else:
-            pn.async_create(
-                self._hass,
-                "The alarm system is not in a ready state. "
-                "Maybe there are doors or windows open?",
-                title=f"{action} Failed",
+            raise HomeAssistantError(
+                f"The alarm system is not in a ready state. Maybe there are doors or windows open?"
             )

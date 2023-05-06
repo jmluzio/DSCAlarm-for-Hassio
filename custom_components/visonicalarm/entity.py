@@ -42,7 +42,7 @@ class BaseVisonicEntity:
                 # Do checks
                 if process_status.error:
                     _LOGGER.error(
-                        f"Aborting action due to process error. Error is {process_status.error}"
+                        f"Aborting process action due to process error. Error is {process_status.error}"
                     )
                     return False
 
