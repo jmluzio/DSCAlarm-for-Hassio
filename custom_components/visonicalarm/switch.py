@@ -99,23 +99,6 @@ class VisonicAlarmSwitch(BaseVisonicEntity, CoordinatorEntity, SwitchEntity):
         return f"{DOMAIN}-{self.coordinator.panel_info.serial}-{self._device.id}{self._switch_type}"
 
     @property
-    def device_info(self):
-        return {
-            "name": self.get_base_name(self._device),
-            "identifiers": {
-                (DOMAIN, f"{self.coordinator.panel_info.serial}-{self._device.id}")
-            },
-            "manufacturer": "Visonic",
-            "model": self._device.subtype
-            if self._device.subtype != "VISONIC_PANEL"
-            else self.coordinator.panel_info.model,
-            "serial_number": self._device.id,
-            "product_type": self._device.subtype,
-            "product_identifier": self._device.id,
-            "via_device": (DOMAIN, self.coordinator.config_entry.data[CONF_PANEL_ID]),
-        }
-
-    @property
     def icon(self):
         """Return icon"""
         return "mdi:motion-sensor-off"
@@ -177,23 +160,6 @@ class VisonicAlarmDeviceSwitch(VisonicAlarmSwitch):
     @property
     def unique_id(self):
         return f"{DOMAIN}-{self.coordinator.panel_info.serial}-{self._device.id}{self._switch_type}"
-
-    @property
-    def device_info(self):
-        return {
-            "name": self.get_base_name(self._device),
-            "identifiers": {
-                (DOMAIN, f"{self.coordinator.panel_info.serial}-{self._device.id}")
-            },
-            "manufacturer": "Visonic",
-            "model": self._device.subtype
-            if self._device.subtype != "VISONIC_PANEL"
-            else self.coordinator.panel_info.model,
-            "serial_number": self._device.id,
-            "product_type": self._device.subtype,
-            "product_identifier": self._device.id,
-            "via_device": (DOMAIN, self.coordinator.config_entry.data[CONF_PANEL_ID]),
-        }
 
     @property
     def icon(self):

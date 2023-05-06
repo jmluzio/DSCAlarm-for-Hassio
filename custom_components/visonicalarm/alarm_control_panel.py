@@ -219,20 +219,6 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
         """Return the last change triggered by."""
         return self._changed_timestamp
 
-    @property
-    def device_info(self):
-        return {
-            "name": f"Alarm Panel",
-            "identifiers": {
-                (DOMAIN, f"{self.coordinator.config_entry.data[CONF_PANEL_ID]}")
-            },
-            "manufacturer": "Visonic",
-            "model": self.coordinator.panel_info.model,
-            "serial_number": self.coordinator.panel_info.serial,
-            "product_type": "Alarm Panel",
-            "product_identifier": self.coordinator.panel_info.model,
-        }
-
     async def async_force_update(self, delay: int = 0):
         _LOGGER.debug(f"Alarm update initiated by {self.name}")
         if delay:

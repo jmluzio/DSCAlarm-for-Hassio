@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from .const import PROCESS_TIMEOUT, SENSOR_TYPE_FRIENDLY_NAME
+from .const import CONF_PANEL_ID, DOMAIN, PROCESS_TIMEOUT, SENSOR_TYPE_FRIENDLY_NAME
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,3 +48,36 @@ class BaseVisonicEntity:
 
             await asyncio.sleep(2)
             timeout += 2
+
+    @property
+    def device_info(self):
+        if hasattr(self, "_device") and self._device and hasattr(self._device, "id"):
+            return {
+                "name": self.get_base_name(self._device),
+                "identifiers": {
+                    (DOMAIN, f"{self.coordinator.panel_info.serial}-{self._device.id}")
+                },
+                "manufacturer": "Visonic",
+                "model": self._device.subtype.replace("_", " ")
+                if self._device.subtype != "VISONIC_PANEL"
+                else self.coordinator.panel_info.model,
+                "serial_number": self._device.id,
+                "product_type": self._device.subtype,
+                "product_identifier": self._device.id,
+                "via_device": (
+                    DOMAIN,
+                    self.coordinator.config_entry.data[CONF_PANEL_ID],
+                ),
+            }
+        else:
+            return {
+                "name": f"Alarm Panel",
+                "identifiers": {
+                    (DOMAIN, f"{self.coordinator.config_entry.data[CONF_PANEL_ID]}")
+                },
+                "manufacturer": "Visonic",
+                "model": self.coordinator.panel_info.model,
+                "serial_number": self.coordinator.panel_info.serial,
+                "product_type": "Alarm Panel",
+                "product_identifier": self.coordinator.panel_info.model,
+            }

@@ -131,23 +131,6 @@ class VisonicAlarmSensor(BaseVisonicEntity, CoordinatorEntity, SensorEntity):
         return self.get_attrs(defined_attrs)
 
     @property
-    def device_info(self):
-        return {
-            "name": self.get_base_name(self._device),
-            "identifiers": {
-                (DOMAIN, f"{self.coordinator.panel_info.serial}-{self._device.id}")
-            },
-            "manufacturer": "Visonic",
-            "model": self._device.subtype
-            if self._device.subtype != "VISONIC_PANEL"
-            else self.coordinator.panel_info.model,
-            "serial_number": self._device.id,
-            "product_type": self._device.subtype,
-            "product_identifier": self._device.id,
-            "via_device": (DOMAIN, self.coordinator.config_entry.data[CONF_PANEL_ID]),
-        }
-
-    @property
     def icon(self):
         """Return icon"""
         icon = None
@@ -269,20 +252,6 @@ class VisonicStatusSensor(VisonicAlarmSensor):
     def native_value(self):
         """Return the state of the entity."""
         return self.state
-
-    @property
-    def device_info(self):
-        return {
-            "name": f"Alarm Panel",
-            "identifiers": {
-                (DOMAIN, f"{self.coordinator.config_entry.data[CONF_PANEL_ID]}")
-            },
-            "manufacturer": "Visonic",
-            "model": self.coordinator.panel_info.model,
-            "serial_number": self.coordinator.panel_info.serial,
-            "product_type": "Alarm Panel",
-            "product_identifier": self.coordinator.panel_info.model,
-        }
 
     async def async_force_update(self, delay: int = 0):
         _LOGGER.debug(f"Alarm update initiated by {self.name}")
