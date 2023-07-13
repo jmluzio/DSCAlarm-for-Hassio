@@ -232,6 +232,7 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
 
     async def async_alarm_disarm(self, code=None):
         """Send disarm command."""
+        _LOGGER.debug("Disarming alarm...")
         if self.coordinator.pin_required_disarm:
             if code != self._code:
                 raise HomeAssistantError(
@@ -244,10 +245,11 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
         self.async_write_ha_state()
 
         if await self.async_wait_for_process_success(self.coordinator, process_token):
+            _LOGGER.debug("Disarming alarm completed successfully")
             self._disarm_in_progress = False
             await self.async_force_update()
         else:
-            _LOGGER.error(f"Alarm disarming did not complete successfully.")
+            _LOGGER.error(f"Disarming alarm did not complete successfully.")
 
     async def async_alarm_arm_home(self, code=None):
         """Send arm home command."""
@@ -258,6 +260,7 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
         await self.async_alarm_arm(AlarmAction.ARM_AWAY, code)
 
     async def async_alarm_arm(self, action: AlarmAction, code):
+        _LOGGER.debug("Arming alarm...")
         if self.coordinator.pin_required_arm and code != self._code:
             raise HomeAssistantError(
                 f"Pin is required to arm this alarm but no pin was provided"
@@ -285,6 +288,7 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
                 if await self.async_wait_for_process_success(
                     self.coordinator, process_token
                 ):
+                    _LOGGER.debug("Arming alarm completed successfully")
                     self._arm_in_progress = False
                     await self.async_force_update()
                 else:
