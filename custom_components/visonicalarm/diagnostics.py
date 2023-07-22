@@ -25,24 +25,24 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
 def _async_get_diagnostics(
     hass: HomeAssistant,
     entry: ConfigEntry,
-    device: DeviceEntry | None = None,
+    device: DeviceEntry | None = None,  # pylint: disable=unused-argument
 ) -> dict[str, Any]:
     data = hass.data[DOMAIN][entry.entry_id][DATA]
 
     diag_data = {}
 
     # Panel Info
-    diag_data.update({"RAW PANEL INFO": to_json(data.panel_info._data)})
+    diag_data.update({"RAW PANEL INFO": to_json(data.panel_info._data)})  # pylint: disable=protected-access
     diag_data.update({"PANEL INFO": to_json(data.panel_info)})
 
     # Status
-    diag_data.update({"RAW STATUS": to_json(data.status._data)})
+    diag_data.update({"RAW STATUS": to_json(data.status._data)})  # pylint: disable=protected-access
     diag_data.update({"STATUS": to_json(data.status)})
 
     # Device info
     device_info = {}
     for visonic_device in data.devices:
-        device_info.update({visonic_device.id: to_json(visonic_device._data)})
+        device_info.update({visonic_device.id: to_json(visonic_device._data)})  # pylint: disable=protected-access
     diag_data.update({"RAW DEVICES": device_info})
 
     device_info = {}

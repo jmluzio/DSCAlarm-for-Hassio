@@ -73,7 +73,9 @@ class VisonicAlarmFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             )
             return user_token
         except Exception as ex:
-            raise Exception("Alarm cannot connect. Error is %s", ex) from ex
+            raise Exception(  # pylint: disable=broad-exception-raised
+                msg=("Alarm cannot connect. Error is %s", str(ex))
+            ) from ex
 
     async def validate_panel_login(self, data):
         """Validate log in to panel."""
@@ -95,7 +97,7 @@ class VisonicAlarmFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 self.user_session = await self.validate_user_login(user_input)
             except LoginTemporaryBlockedError:
                 errors["base"] = "temporary_block"
-            except Exception as ex:
+            except Exception as ex:  # pylint: disable=broad-exception-caught
                 # TODO - Improve errors
                 errors["base"] = "unknown"
                 _LOGGER.error("Unable to connect - %s", ex)
@@ -121,7 +123,7 @@ class VisonicAlarmFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 print(f"USER INPUT PANEL FORM - {user_input}")
             except LoginTemporaryBlockedError:
                 errors["base"] = "temporary_block"
-            except Exception as ex:
+            except Exception as ex:  # pylint: disable=broad-exception-caught
                 # TODO - Improve errors
                 errors["base"] = "unknown"
                 _LOGGER.error("Unable to connect - %s", ex)
