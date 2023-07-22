@@ -59,7 +59,6 @@ class VisonicAlarmFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         """Validate the user input allows us to connect.
         Data has the keys from DATA_SCHEMA with values provided by the user.
         """
-        print(f"USER - {data}")
         self.alarm = VisonicAlarm.Setup(
             data[CONF_HOST],
             data[CONF_UUID],
@@ -79,7 +78,6 @@ class VisonicAlarmFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def validate_panel_login(self, data):
         """Validate log in to panel."""
-        print(f"PANEL - {data}")
         session_token = await self.hass.async_add_executor_job(
             self.alarm.panel_login, data[CONF_PANEL_ID], data[CONF_CODE]
         )
@@ -119,8 +117,6 @@ class VisonicAlarmFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 # Validate panel login
                 await self.validate_panel_login(user_input)
-                user_input["partition"] = -1
-                print(f"USER INPUT PANEL FORM - {user_input}")
             except LoginTemporaryBlockedError:
                 errors["base"] = "temporary_block"
             except Exception as ex:  # pylint: disable=broad-exception-caught

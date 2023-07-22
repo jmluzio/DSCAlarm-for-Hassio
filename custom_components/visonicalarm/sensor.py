@@ -32,7 +32,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
             if device.device_type == "CONTROL_PANEL":
                 _LOGGER.debug("Adding panel status sensor")
-                sensors.append(VisonicStatusSensor(coordinator, coordinator.status))
+                for partition in coordinator.status.partitions:
+                    sensors.append(VisonicStatusSensor(coordinator, coordinator.status, partition_id=partition.id))
                 continue
 
             sensors.append(VisonicAlarmSensor(coordinator, device, "state"))
@@ -47,15 +48,16 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
 
 class VisonicAlarmSensor(BaseVisonicEntity, CoordinatorEntity, SensorEntity):
-    """Implementation of a Visonic Alarm Contact sensor."""
+    """Implementation of a Visonic Alarm sensor."""
 
-    def __init__(self, coordinator, device, sensor_type=None, status=None):
+    def __init__(self, coordinator, device, sensor_type=None, status=None, partition_id: int = -1):
         """Initialize the sensor"""
         super().__init__(coordinator)
         self._device = device
         self._alarm = coordinator
         self._sensor_type = sensor_type
         self._status = status
+        self._partition_id = partition_id
 
     def get_attrs(self, defined_attrs: list) -> dict:
         """Return attributes for sensor."""
@@ -69,20 +71,14 @@ class VisonicAlarmSensor(BaseVisonicEntity, CoordinatorEntity, SensorEntity):
     def name(self):
         """Return the name of the sensor"""
         if self._sensor_type:
-            return f"{self.get_base_name(self._device)} {str(self._sensor_type).capitalize()}"
+            return f"{self.get_base_name(self._device, self._partition_id)} {str(self._sensor_type).capitalize()}"
 
-        return self.get_base_name(self._device)
+        return self.get_base_name(self._device, self._partition_id)
 
     @property
     def unique_id(self):
         """Return unique id."""
         return f"{DOMAIN}-{self._alarm.panel_info.serial}-{self._device.id}{self._sensor_type}"
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes of the alarm system."""
-        defined_attrs = ["location", "name", "device_type", "subtype", "zone_type"]
-        return self.get_attrs(defined_attrs)
 
     @property
     def icon(self):
@@ -95,9 +91,15 @@ class VisonicAlarmSensor(BaseVisonicEntity, CoordinatorEntity, SensorEntity):
         return icon
 
     @property
-    def state(self):
+    def native_value(self):
         """Return the state of the sensor."""
         return getattr(self._device, self._sensor_type) if hasattr(self._device, self._sensor_type) else "Unknown"
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes of the alarm system."""
+        defined_attrs = ["location", "name", "device_type", "subtype", "zone_type"]
+        return self.get_attrs(defined_attrs)
 
     async def async_force_update(self, delay: int = 0):
         """Force update of sensor."""
@@ -121,18 +123,6 @@ class VisonicAlarmTemperatureSensor(VisonicAlarmSensor):
     """Class for temperature sensor."""
 
     @property
-    def state(self):
-        """Return the state of the sensor."""
-        return float(self._device.temperature)
-
-    @property
-    def extra_state_attributes(self):
-        attrs = {}
-        if hasattr(self._device, "temperature_last_updated"):
-            attrs["last_updated"] = self.convert_to_local_datetime(self._device.temperature_last_updated)
-        return attrs
-
-    @property
     def device_class(self):
         """Return device class."""
         return SensorDeviceClass.TEMPERATURE
@@ -145,28 +135,23 @@ class VisonicAlarmTemperatureSensor(VisonicAlarmSensor):
     @property
     def native_value(self):
         """Return the state of the entity."""
-        return self.state
+        return float(self._device.temperature)
 
     @property
     def native_unit_of_measurement(self):
         """Return unit of temperature"""
         return UnitOfTemperature.CELSIUS
 
-
-class VisonicAlarmLuxSensor(VisonicAlarmSensor):
-    """Class for a brightness sensor"""
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return float(self._device.brightness)
-
     @property
     def extra_state_attributes(self):
         attrs = {}
-        if hasattr(self._device, "brightness_last_updated"):
-            attrs["last_updated"] = self.convert_to_local_datetime(self._device.brightness_last_updated)
+        if hasattr(self._device, "temperature_last_updated"):
+            attrs["last_updated"] = self.convert_to_local_datetime(self._device.temperature_last_updated)
         return attrs
+
+
+class VisonicAlarmLuxSensor(VisonicAlarmSensor):
+    """Class for a brightness sensor"""
 
     @property
     def device_class(self):
@@ -180,13 +165,20 @@ class VisonicAlarmLuxSensor(VisonicAlarmSensor):
 
     @property
     def native_value(self):
-        """Return the state of the entity."""
-        return self.state
+        """Return the state of the sensor."""
+        return float(self._device.brightness)
 
     @property
     def native_unit_of_measurement(self):
         """Return unit of brightness"""
-        return LIGHT_LUX  # UnitOfTemperature.CELCIUS
+        return LIGHT_LUX
+
+    @property
+    def extra_state_attributes(self):
+        attrs = {}
+        if hasattr(self._device, "brightness_last_updated"):
+            attrs["last_updated"] = self.convert_to_local_datetime(self._device.brightness_last_updated)
+        return attrs
 
 
 class VisonicStatusSensor(VisonicAlarmSensor):
@@ -195,25 +187,20 @@ class VisonicStatusSensor(VisonicAlarmSensor):
     @property
     def name(self):
         """Return the name of the sensor"""
-        return "Partition Ready"
+        return f"Partition {abs(self._partition_id)} Ready"
 
     @property
     def unique_id(self):
-        return f"{DOMAIN}-{self._alarm.panel_info.serial}-{self.name}"
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._device.partitions[0].ready
-
-    @property
-    def extra_state_attributes(self):
-        return {}
+        return f"{DOMAIN}-{self._alarm.panel_info.serial}-{abs(self._partition_id)}-{self.name}"
 
     @property
     def native_value(self):
         """Return the state of the entity."""
-        return self.state
+        return self.coordinator.get_partition_by_id(self._partition_id).ready
+
+    @property
+    def extra_state_attributes(self):
+        return {}
 
     async def async_force_update(self, delay: int = 0):
         _LOGGER.debug("Alarm update initiated by %s", self.name)

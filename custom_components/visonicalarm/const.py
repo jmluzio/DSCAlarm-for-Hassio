@@ -1,6 +1,5 @@
 DOMAIN = "visonicalarm"
 CONF_PANEL_ID = "panel_id"
-CONF_PARTITION = "partition"
 CONF_PIN_REQUIRED_ARM = "pin_required_arm"
 CONF_PIN_REQUIRED_DISARM = "pin_required_disarm"
 

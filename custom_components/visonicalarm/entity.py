@@ -20,7 +20,7 @@ class BaseVisonicEntity:
     coordinator: DataUpdateCoordinator
 
     @staticmethod
-    def get_base_name(device=None):
+    def get_base_name(device=None, partition_id: int = 0):
         """Get device name"""
         if not device:
             return "Alarm Panel"

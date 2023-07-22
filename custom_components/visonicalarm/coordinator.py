@@ -16,7 +16,6 @@ from pyvisonicalarm.exceptions import UnauthorizedError, UserAuthRequiredError
 
 from .const import (
     CONF_PANEL_ID,
-    CONF_PARTITION,
     CONF_PIN_REQUIRED_ARM,
     CONF_PIN_REQUIRED_DISARM,
     DEFAUL_SCAN_INTERVAL,
@@ -54,8 +53,6 @@ class VisonicAlarmCoordinator(DataUpdateCoordinator):
 
         self.alarm_data = VisonicAlarmData()
         self.last_update = datetime.now()
-
-        self.partition_id = config_entry.data[CONF_PARTITION]
         self.alarm: VisonicAlarm.Setup = None
         self.events: list[VisonicEvent] = []
         self.panel_info: VisonicPanel = None
@@ -128,7 +125,7 @@ class VisonicAlarmCoordinator(DataUpdateCoordinator):
         if process_status:
             return process_status[0]
 
-    def get_partition_status(self, partition_id) -> VisonicPartition:
+    def get_partition_by_id(self, partition_id) -> VisonicPartition:
         """Get status of partition."""
         if self.status and partition_id in [partition.id for partition in self.status.partitions]:
             return next(partition for partition in self.status.partitions if partition.id == partition_id)
