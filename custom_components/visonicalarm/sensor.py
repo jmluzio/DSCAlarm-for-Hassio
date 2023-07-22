@@ -79,7 +79,7 @@ class VisonicAlarmSensor(BaseVisonicEntity, CoordinatorEntity, SensorEntity):
         return f"{DOMAIN}-{self._alarm.panel_info.serial}-{self._device.id}{self._sensor_type}"
 
     @property
-    def state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes of the alarm system."""
         defined_attrs = ["location", "name", "device_type", "subtype", "zone_type"]
         return self.get_attrs(defined_attrs)
@@ -126,7 +126,7 @@ class VisonicAlarmTemperatureSensor(VisonicAlarmSensor):
         return float(self._device.temperature)
 
     @property
-    def state_attributes(self):
+    def extra_state_attributes(self):
         attrs = {}
         if hasattr(self._device, "temperature_last_updated"):
             attrs["last_updated"] = self.convert_to_local_datetime(self._device.temperature_last_updated)
@@ -162,7 +162,7 @@ class VisonicAlarmLuxSensor(VisonicAlarmSensor):
         return float(self._device.brightness)
 
     @property
-    def state_attributes(self):
+    def extra_state_attributes(self):
         attrs = {}
         if hasattr(self._device, "brightness_last_updated"):
             attrs["last_updated"] = self.convert_to_local_datetime(self._device.brightness_last_updated)
@@ -207,7 +207,7 @@ class VisonicStatusSensor(VisonicAlarmSensor):
         return self._device.partitions[0].ready
 
     @property
-    def state_attributes(self):
+    def extra_state_attributes(self):
         return {}
 
     @property
