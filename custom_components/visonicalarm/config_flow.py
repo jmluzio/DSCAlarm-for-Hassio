@@ -2,35 +2,19 @@
 Config Flow for Visonic Alarm.
 @msp1974
 """
+import logging
 import uuid
+
 import voluptuous as vol
+from homeassistant import config_entries
+from homeassistant.const import CONF_CODE, CONF_EMAIL, CONF_HOST, CONF_PASSWORD, CONF_SCAN_INTERVAL, CONF_UUID
+from homeassistant.core import callback
+from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers.selector import selector
 from pyvisonicalarm import alarm as VisonicAlarm
 from pyvisonicalarm.exceptions import LoginTemporaryBlockedError
 
-from homeassistant import config_entries
-from homeassistant.helpers.selector import selector
-from homeassistant.core import callback
-from homeassistant.const import (
-    CONF_HOST,
-    CONF_EMAIL,
-    CONF_PASSWORD,
-    CONF_CODE,
-    CONF_UUID,
-    CONF_NAME,
-    CONF_SCAN_INTERVAL,
-)
-from homeassistant.data_entry_flow import FlowResult
-
-from .const import (
-    CONF_PANEL_ID,
-    CONF_PARTITION,
-    CONF_PIN_REQUIRED_ARM,
-    CONF_PIN_REQUIRED_DISARM,
-    DOMAIN,
-    DEFAUL_SCAN_INTERVAL,
-)
-
-import logging
+from .const import CONF_PANEL_ID, CONF_PIN_REQUIRED_ARM, CONF_PIN_REQUIRED_DISARM, DEFAUL_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,6 +26,7 @@ USER_DATA_SCHEMA = {
 
 
 def get_unique_id(wiser_id: str):
+    """Return unique id."""
     return str(f"{DOMAIN}-{wiser_id}")
 
 
@@ -61,11 +46,13 @@ class VisonicAlarmFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize the wiser flow."""
         self.discovery_info = {}
         self.user_session = None
+        self.user_pass = {}
         self.alarm: VisonicAlarm = None
 
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
+        """Get options flow handler."""
         return VisonicAlarmOptionsFlowHandler(config_entry)
 
     async def validate_user_login(self, data):
@@ -86,9 +73,10 @@ class VisonicAlarmFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             )
             return user_token
         except Exception as ex:
-            raise Exception(f"Alarm cannot connect. Error is {ex}")
+            raise Exception("Alarm cannot connect. Error is %s", ex) from ex
 
     async def validate_panel_login(self, data):
+        """Validate log in to panel."""
         print(f"PANEL - {data}")
         session_token = await self.hass.async_add_executor_job(
             self.alarm.panel_login, data[CONF_PANEL_ID], data[CONF_CODE]
@@ -105,12 +93,12 @@ class VisonicAlarmFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 user_input[CONF_UUID] = str(uuid.uuid4())
                 self.user_session = await self.validate_user_login(user_input)
-            except LoginTemporaryBlockedError as ex:
+            except LoginTemporaryBlockedError:
                 errors["base"] = "temporary_block"
-            except:
+            except Exception as ex:
                 # TODO - Improve errors
                 errors["base"] = "unknown"
-                _LOGGER.error(f"Unable to connect - {ex}")
+                _LOGGER.error("Unable to connect - %s", ex)
 
             if "base" not in errors:
                 self.user_pass = user_input
@@ -123,24 +111,23 @@ class VisonicAlarmFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_panel(self, user_input=None) -> FlowResult:
+        """Config flow step to select panel"""
         errors = {}
         if user_input:
             try:
                 # Validate panel login
-                session_token = await self.validate_panel_login(user_input)
+                await self.validate_panel_login(user_input)
                 user_input["partition"] = -1
                 print(f"USER INPUT PANEL FORM - {user_input}")
-            except LoginTemporaryBlockedError as ex:
+            except LoginTemporaryBlockedError:
                 errors["base"] = "temporary_block"
-            except:
+            except Exception as ex:
                 # TODO - Improve errors
                 errors["base"] = "unknown"
-                _LOGGER.error(f"Unable to connect - {ex}")
+                _LOGGER.error("Unable to connect - %s", ex)
 
             if "base" not in errors:
-                await self.async_set_unique_id(
-                    f"{self.user_pass[CONF_EMAIL]}-{user_input[CONF_PANEL_ID]}"
-                )
+                await self.async_set_unique_id(f"{self.user_pass[CONF_EMAIL]}-{user_input[CONF_PANEL_ID]}")
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
                     title=user_input[CONF_PANEL_ID],
@@ -179,7 +166,6 @@ class VisonicAlarmOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         """Handle options flow."""
-        """Handle options flow."""
         if user_input is not None:
             options = self.config_entry.options | user_input
             return self.async_create_entry(title="", data=options)
@@ -187,9 +173,7 @@ class VisonicAlarmOptionsFlowHandler(config_entries.OptionsFlow):
         data_schema = {
             vol.Required(
                 CONF_SCAN_INTERVAL,
-                default=self.config_entry.options.get(
-                    CONF_SCAN_INTERVAL, DEFAUL_SCAN_INTERVAL
-                ),
+                default=self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAUL_SCAN_INTERVAL),
             ): selector(
                 {
                     "number": {

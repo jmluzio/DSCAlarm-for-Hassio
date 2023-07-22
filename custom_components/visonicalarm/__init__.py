@@ -8,7 +8,6 @@ import logging
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC
-import homeassistant.helpers.config_validation as cv
 
 from .coordinator import VisonicAlarmCoordinator
 from .const import CONF_PANEL_ID, DATA, DOMAIN, UPDATE_LISTENER, VISONIC_PLATFORMS
@@ -41,9 +40,7 @@ async def async_setup_entry(hass, config_entry):
 
     # Setup platforms
     for platform in VISONIC_PLATFORMS:
-        hass.async_add_job(
-            hass.config_entries.async_forward_entry_setup(config_entry, platform)
-        )
+        hass.async_add_job(hass.config_entries.async_forward_entry_setup(config_entry, platform))
 
     # Setup services
     # await async_setup_services(hass, coordinator)
@@ -51,7 +48,7 @@ async def async_setup_entry(hass, config_entry):
     # Add hub as device
     await async_update_device_registry(hass, config_entry)
 
-    _LOGGER.info(f"Visonic Alarm Setup Completed")
+    _LOGGER.info("Visonic Alarm Setup Completed")
     return True
 
 
@@ -64,7 +61,7 @@ async def async_update_device_registry(hass, config_entry):
         connections={(CONNECTION_NETWORK_MAC, config_entry.data[CONF_PANEL_ID])},
         identifiers={(DOMAIN, config_entry.data[CONF_PANEL_ID])},
         manufacturer="Visonic",
-        name=f"Alarm Panel",
+        name="Alarm Panel",
         model=coordinator.panel_info.model,
     )
 
@@ -78,7 +75,8 @@ async def async_remove_config_entry_device(hass, config_entry, device_entry) -> 
     """Delete device if no entities"""
     if device_entry.model == "Controller":
         _LOGGER.error(
-            "You cannot delete the Wiser Controller device via the device delete method.  Please remove the integration instead."
+            "You cannot delete the Alarm panel device via the device delete method. %s",
+            "Please remove the integration instead.",
         )
         return False
     return True
@@ -86,21 +84,11 @@ async def async_remove_config_entry_device(hass, config_entry, device_entry) -> 
 
 async def async_unload_entry(hass, config_entry):
     """Unload a config entry"""
-
-    # Deregister services if only instance
-    """
-    _LOGGER.debug("Unregister Wiser services")
-    for k, service in WISER_SERVICES.items():
-        hass.services.async_remove(DOMAIN, service)
-    """
-    _LOGGER.debug("Unload Wiser integration platforms")
+    _LOGGER.debug("Unload Visonic integration platforms")
     # Unload a config entry
     unload_ok = all(
         await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(config_entry, platform)
-                for platform in VISONIC_PLATFORMS
-            ]
+            *[hass.config_entries.async_forward_entry_unload(config_entry, platform) for platform in VISONIC_PLATFORMS]
         )
     )
 

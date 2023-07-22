@@ -3,30 +3,25 @@ Interfaces with the Visonic Alarm control panel.
 """
 import asyncio
 import logging
-from .entity import BaseVisonicEntity
 
 from homeassistant.components.alarm_control_panel import AlarmControlPanelEntity
-import homeassistant.components.persistent_notification as pn
+from homeassistant.components.alarm_control_panel.const import AlarmControlPanelEntityFeature, CodeFormat
 from homeassistant.const import (
+    CONF_CODE,
     STATE_ALARM_ARMED_AWAY,
     STATE_ALARM_ARMED_HOME,
-    STATE_ALARM_DISARMED,
-    STATE_UNKNOWN,
     STATE_ALARM_ARMING,
+    STATE_ALARM_DISARMED,
     STATE_ALARM_DISARMING,
     STATE_ALARM_PENDING,
     STATE_ALARM_TRIGGERED,
-    CONF_CODE,
-)
-from homeassistant.components.alarm_control_panel.const import (
-    CodeFormat,
-    AlarmControlPanelEntityFeature,
 )
 from homeassistant.core import callback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, DATA
+from .const import DATA, DOMAIN
+from .entity import BaseVisonicEntity
 
 SUPPORT_VISONIC = (
     AlarmControlPanelEntityFeature.ARM_HOME
@@ -53,45 +48,26 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     visonic_alarm = [VisonicAlarm(coordinator, hass)]
     async_add_entities(visonic_alarm)
 
-    # Create an event listener to listen for changed arm state.
-    # We will only fetch the events from the API once the arm state has changed
-    # because it is quite a lot of data.
-    """
-    def arm_event_listener(event):
-        entity_id = event.data.get('entity_id')
-        old_state = event.data.get('old_state')
-        new_state = event.data.get('new_state')
-
-        if new_state is None or new_state.state in (STATE_UNKNOWN, ''):
-            return None
-
-        if entity_id == 'alarm_control_panel.visonic_alarm' and \
-                old_state.state is not new_state.state:
-            state = new_state.state
-            if state == 'armed_home' or state == 'armed_away' or \
-                    state == 'Disarmed':
-                last_event = coordinator.alarm.get_last_event(
-                    timestamp_hour_offset=visonic_alarm.event_hour_offset)
-                visonic_alarm.update_last_event(last_event['user'],
-                                                last_event['timestamp'])
-
-    #hass.bus.listen(EVENT_STATE_CHANGED, arm_event_listener)
-    """
-
 
 class AlarmAction:
+    """Alarm Actions"""
+
     DISARM = "DISARM"
     ARM_HOME = "ARM_HOME"
     ARM_AWAY = "ARM_AWAY"
 
 
 class AlarmStatus:
+    """Alarm Status"""
+
     EXIT = "EXIT"
     ENTRYDELAY = "ENTRYDELAY"
     ALARM = "ALARM"
 
 
 class AlarmState:
+    """Alarm State"""
+
     DISARM = "DISARM"
     AWAY = "AWAY"
     HOME = "HOME"
@@ -107,14 +83,12 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
         self.coordinator = coordinator
         self._alarm = self.coordinator.alarm
         self._code = self.coordinator.config_entry.data[CONF_CODE]
-        self._partition = self.coordinator.get_partition_status(
-            self.coordinator._partition_id
-        )
+        self._partition = self.coordinator.get_partition_status(self.coordinator._partition_id)
         self._changed_by = None
         self._changed_timestamp = None
         self._arm_in_progress = False
         self._disarm_in_progress = False
-        self._partition_id = coordinator._partition_id
+        self.partition_id = coordinator._partition_id
         self._state = self.get_partition_state(self._partition)
 
     @property
@@ -124,20 +98,19 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
 
     @property
     def unique_id(self):
+        """Return unique id."""
         return f"{DOMAIN}-{self.coordinator.panel_info.serial}-panel"
 
     @property
-    def state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes of the alarm system."""
         attrs = super().state_attributes
         attrs[ATTR_SYSTEM_SERIAL_NUMBER] = self.coordinator.panel_info.serial
         attrs[ATTR_SYSTEM_MODEL] = self.coordinator.panel_info.model
-        attrs[ATTR_SYSTEM_READY] = self.coordinator.get_partition_status(
-            self.coordinator._partition_id
-        ).ready
+        attrs[ATTR_SYSTEM_READY] = self.coordinator.get_partition_status(self.coordinator.partition_id).ready
         # ATTR_SYSTEM_CONNECTED: self._alarm.connected(),
         # ATTR_SYSTEM_SESSION_TOKEN: self._alarm.session_token,
-        attrs[ATTR_SYSTEM_LAST_UPDATE] = self.coordinator._last_update
+        attrs[ATTR_SYSTEM_LAST_UPDATE] = self.coordinator.last_update
         # ATTR_CODE_FORMAT: self.code_format,
         # ATTR_CHANGED_BY: self.changed_by,
         # ATTR_CHANGED_TIMESTAMP: self._changed_timestamp,
@@ -166,11 +139,8 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
     @property
     def code_format(self) -> CodeFormat | None:
         """Return one or more digits/characters."""
-        if (
-            self.coordinator.pin_required_arm and self._state == STATE_ALARM_DISARMED
-        ) or (
-            self.coordinator.pin_required_disarm
-            and self._state in [STATE_ALARM_ARMED_HOME, STATE_ALARM_ARMED_AWAY]
+        if (self.coordinator.pin_required_arm and self._state == STATE_ALARM_DISARMED) or (
+            self.coordinator.pin_required_disarm and self._state in [STATE_ALARM_ARMED_HOME, STATE_ALARM_ARMED_AWAY]
         ):
             return CodeFormat.NUMBER
 
@@ -185,20 +155,20 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
         return self._changed_timestamp
 
     async def async_force_update(self, delay: int = 0):
-        _LOGGER.debug(f"Alarm update initiated by {self.name}")
+        """Force update from api"""
+        _LOGGER.debug("Alarm update initiated by %s", self.name)
         if delay:
             await asyncio.sleep(delay)
         await self.coordinator.async_refresh()
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        self._partition = self.coordinator.get_partition_status(
-            self.coordinator._partition_id
-        )
+        self._partition = self.coordinator.get_partition_status(self.coordinator.partition_id)
         self._state = self.get_partition_state(self._partition)
         self.async_write_ha_state()
 
     def get_partition_state(self, partition) -> str | None:
+        """Get current state of partition"""
         status = partition.status
         state = partition.state
 
@@ -235,9 +205,7 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
         _LOGGER.debug("Disarming alarm...")
         if self.coordinator.pin_required_disarm:
             if code != self._code:
-                raise HomeAssistantError(
-                    f"Pin is required to disarm this alarm but no pin was provided"
-                )
+                raise HomeAssistantError("Pin is required to disarm this alarm but no pin was provided")
 
         process_token = await self.hass.async_add_executor_job(self._alarm.disarm)
         self._disarm_in_progress = True
@@ -249,7 +217,7 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
             self._disarm_in_progress = False
             await self.async_force_update()
         else:
-            _LOGGER.error(f"Disarming alarm did not complete successfully.")
+            _LOGGER.error("Disarming alarm did not complete successfully.")
 
     async def async_alarm_arm_home(self, code=None):
         """Send arm home command."""
@@ -260,48 +228,41 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
         await self.async_alarm_arm(AlarmAction.ARM_AWAY, code)
 
     async def async_alarm_arm(self, action: AlarmAction, code):
+        """Arm Alarm"""
         _LOGGER.debug("Arming alarm...")
         if self.coordinator.pin_required_arm and code != self._code:
-            raise HomeAssistantError(
-                f"Pin is required to arm this alarm but no pin was provided"
-            )
+            raise HomeAssistantError("Pin is required to arm this alarm but no pin was provided")
 
         # Get current status of partition
         await self.coordinator.async_update_status()
-        partition = self.coordinator.get_partition_status(self._partition_id)
+        partition = self.coordinator.get_partition_status(self.partition_id)
 
         if partition.ready:
             try:
                 if action == AlarmAction.ARM_HOME:
-                    process_token = await self.hass.async_add_executor_job(
-                        self._alarm.arm_home
-                    )
+                    process_token = await self.hass.async_add_executor_job(self._alarm.arm_home)
                 elif action == AlarmAction.ARM_AWAY:
-                    process_token = await self.hass.async_add_executor_job(
-                        self._alarm.arm_away
-                    )
+                    process_token = await self.hass.async_add_executor_job(self._alarm.arm_away)
 
                 self._arm_in_progress = True
                 self._state = STATE_ALARM_ARMING
                 self.async_write_ha_state()
 
-                if await self.async_wait_for_process_success(
-                    self.coordinator, process_token
-                ):
+                if await self.async_wait_for_process_success(self.coordinator, process_token):
                     _LOGGER.debug("Arming alarm completed successfully")
                     self._arm_in_progress = False
                     await self.async_force_update()
                 else:
                     self._arm_in_progress = False
-                    _LOGGER.error(f"{action} did not complete successfully.")
-                    raise HomeAssistantError(f"There was an error setting the alarm")
+                    _LOGGER.error("%s did not complete successfully.", action)
+                    raise HomeAssistantError("There was an error setting the alarm")
 
             except HomeAssistantError:
                 pass
             except Exception as ex:
-                _LOGGER.error(f"Unable to complete {action}.  Error is {ex}")
-                raise HomeAssistantError(f"Unknown error setting the alarm")
+                _LOGGER.error("Unable to complete %s.  Error is %s", action, ex)
+                raise HomeAssistantError("Unknown error setting the alarm") from ex
         else:
             raise HomeAssistantError(
-                f"The alarm system is not in a ready state. Maybe there are doors or windows open?"
+                "The alarm system is not in a ready state. Maybe there are doors or windows open?"
             )

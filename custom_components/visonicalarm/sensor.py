@@ -3,30 +3,14 @@ Interfaces with the Visonic Alarm sensors.
 """
 import asyncio
 import logging
-from .entity import BaseVisonicEntity
 
-from homeassistant.const import (
-    STATE_OPEN,
-    STATE_CLOSED,
-    UnitOfTemperature,
-    TEMP_CELSIUS,
-    LIGHT_LUX,
-)
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorStateClass,
-    SensorEntity,
-)
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
+from homeassistant.const import LIGHT_LUX, STATE_CLOSED, STATE_OPEN, UnitOfTemperature
 from homeassistant.core import callback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import (
-    CONF_PANEL_ID,
-    DOMAIN,
-    DATA,
-    SUPPORTED_SENSORS,
-    SENSOR_TYPE_FRIENDLY_NAME,
-)
+from .const import DATA, DOMAIN, SUPPORTED_SENSORS
+from .entity import BaseVisonicEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,10 +21,13 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     sensors = []
 
     for device in coordinator.devices:
-        _LOGGER.debug(f"Found: {device.subtype}, {str(device.device_type)}")
+        _LOGGER.debug("Found: %s, %s", device.subtype, str(device.device_type))
         if device and device.subtype and device.subtype in SUPPORTED_SENSORS:
             _LOGGER.debug(
-                f"New device found [Type: {str(device.device_type)} {str(device.subtype)} [ID: {str(device.id)} ]"
+                "New device found [Type: %s %s ] [ID: %s ]",
+                str(device.device_type),
+                str(device.subtype),
+                str(device.id),
             )
 
             if device.device_type == "CONTROL_PANEL":
@@ -51,9 +38,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             sensors.append(VisonicAlarmSensor(coordinator, device, "state"))
 
             if hasattr(device, "temperature"):
-                sensors.append(
-                    VisonicAlarmTemperatureSensor(coordinator, device, "temperature")
-                )
+                sensors.append(VisonicAlarmTemperatureSensor(coordinator, device, "temperature"))
 
             if hasattr(device, "brightness"):
                 sensors.append(VisonicAlarmLuxSensor(coordinator, device, "brightness"))
@@ -73,6 +58,7 @@ class VisonicAlarmSensor(BaseVisonicEntity, CoordinatorEntity, SensorEntity):
         self._status = status
 
     def get_attrs(self, defined_attrs: list) -> dict:
+        """Return attributes for sensor."""
         attrs = {}
         for attr in defined_attrs:
             if hasattr(self._device, attr):
@@ -89,6 +75,7 @@ class VisonicAlarmSensor(BaseVisonicEntity, CoordinatorEntity, SensorEntity):
 
     @property
     def unique_id(self):
+        """Return unique id."""
         return f"{DOMAIN}-{self._alarm.panel_info.serial}-{self._device.id}{self._sensor_type}"
 
     @property
@@ -110,31 +97,29 @@ class VisonicAlarmSensor(BaseVisonicEntity, CoordinatorEntity, SensorEntity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        return (
-            getattr(self._device, self._sensor_type)
-            if hasattr(self._device, self._sensor_type)
-            else "Unknown"
-        )
+        return getattr(self._device, self._sensor_type) if hasattr(self._device, self._sensor_type) else "Unknown"
 
     async def async_force_update(self, delay: int = 0):
-        _LOGGER.debug(f"Alarm update initiated by {self.name}")
+        """Force update of sensor."""
+        _LOGGER.debug("Alarm update initiated by %s", self.name)
         if delay:
             await asyncio.sleep(delay)
         await self.coordinator.async_refresh()
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        # _LOGGER.debug(f"{self.name} updating")
         """Get the latest data"""
         try:
             self._device = self.coordinator.get_device_by_id(self._device.id)
             self.async_write_ha_state()
 
         except OSError as error:
-            _LOGGER.warning(f"Could not update the device information: {error}")
+            _LOGGER.warning("Could not update the device information: %s", error)
 
 
 class VisonicAlarmTemperatureSensor(VisonicAlarmSensor):
+    """Class for temperature sensor."""
+
     @property
     def state(self):
         """Return the state of the sensor."""
@@ -144,17 +129,17 @@ class VisonicAlarmTemperatureSensor(VisonicAlarmSensor):
     def state_attributes(self):
         attrs = {}
         if hasattr(self._device, "temperature_last_updated"):
-            attrs["last_updated"] = self.convert_to_local_datetime(
-                self._device.temperature_last_updated
-            )
+            attrs["last_updated"] = self.convert_to_local_datetime(self._device.temperature_last_updated)
         return attrs
 
     @property
     def device_class(self):
+        """Return device class."""
         return SensorDeviceClass.TEMPERATURE
 
     @property
     def state_class(self):
+        """Return state class."""
         return SensorStateClass.MEASUREMENT
 
     @property
@@ -164,10 +149,13 @@ class VisonicAlarmTemperatureSensor(VisonicAlarmSensor):
 
     @property
     def native_unit_of_measurement(self):
-        return TEMP_CELSIUS  # UnitOfTemperature.CELCIUS
+        """Return unit of temperature"""
+        return UnitOfTemperature.CELCIUS
 
 
 class VisonicAlarmLuxSensor(VisonicAlarmSensor):
+    """Class for a brightness sensor"""
+
     @property
     def state(self):
         """Return the state of the sensor."""
@@ -177,17 +165,17 @@ class VisonicAlarmLuxSensor(VisonicAlarmSensor):
     def state_attributes(self):
         attrs = {}
         if hasattr(self._device, "brightness_last_updated"):
-            attrs["last_updated"] = self.convert_to_local_datetime(
-                self._device.brightness_last_updated
-            )
+            attrs["last_updated"] = self.convert_to_local_datetime(self._device.brightness_last_updated)
         return attrs
 
     @property
     def device_class(self):
+        """Return device class."""
         return SensorDeviceClass.ILLUMINANCE
 
     @property
     def state_class(self):
+        """Return state class."""
         return SensorStateClass.MEASUREMENT
 
     @property
@@ -197,14 +185,17 @@ class VisonicAlarmLuxSensor(VisonicAlarmSensor):
 
     @property
     def native_unit_of_measurement(self):
+        """Return unit of brightness"""
         return LIGHT_LUX  # UnitOfTemperature.CELCIUS
 
 
 class VisonicStatusSensor(VisonicAlarmSensor):
+    """Class for status sensor."""
+
     @property
     def name(self):
         """Return the name of the sensor"""
-        return f"Partition Ready"
+        return "Partition Ready"
 
     @property
     def unique_id(self):
@@ -225,18 +216,17 @@ class VisonicStatusSensor(VisonicAlarmSensor):
         return self.state
 
     async def async_force_update(self, delay: int = 0):
-        _LOGGER.debug(f"Alarm update initiated by {self.name}")
+        _LOGGER.debug("Alarm update initiated by %s", self.name)
         if delay:
             await asyncio.sleep(delay)
         await self.coordinator.async_refresh()
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        # _LOGGER.debug(f"{self.name} updating")
         """Get the latest data"""
         try:
             self._device = self.coordinator.status
             self.async_write_ha_state()
 
         except OSError as error:
-            _LOGGER.warning(f"Could not update the device information: {error}")
+            _LOGGER.warning("Could not update the device information: %s", error)
