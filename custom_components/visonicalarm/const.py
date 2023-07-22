@@ -11,7 +11,7 @@ UPDATE_LISTENER = "update_listener"
 VISONIC_PLATFORMS = ["alarm_control_panel", "sensor", "switch"]
 
 PANELS = ["VISONIC_PANEL"]
-CONTACT_SENSORS = ["CONTACT", "MC303_VANISH"]
+CONTACT_SENSORS = ["AUX_CONTACT", "CONTACT", "MC303_VANISH"]
 MOTION_SENSORS = [
     "FLAT_PIR_SMART",
     "MOTION",
@@ -20,10 +20,11 @@ MOTION_SENSORS = [
     "MOTION_CAMERA",
     "CURTAIN",
 ]
-OTHER_SENSORS = ["KEYFOB_ARM_LED", "OUTDOOR"]
+OTHER_SENSORS = ["BASIC_KEYFOB", "KEYFOB_ARM_LED", "GENERIC_PROXY_TAG", "OUTDOOR"]
 SUPPORTED_SENSORS = [*PANELS, *CONTACT_SENSORS, *MOTION_SENSORS, *OTHER_SENSORS]
 
 SENSOR_TYPE_FRIENDLY_NAME = {
+    "AUX_CONTACT": "Contact Sensor",
     "CONTACT": "Contact Sensor",
     "MC303_VANISH": "Contact Sensor",
     "CURTAIN": "Curtain Motion Sensor",
@@ -32,7 +33,9 @@ SENSOR_TYPE_FRIENDLY_NAME = {
     "MOTION_DUAL": "Motion Dual Sensor",
     "MOTION_V_ANTIMASK": "Motion Sensor",
     "MOTION_CAMERA": "Motion Camera",
+    "BASIC_KEYFOB": "Keyfob",
     "KEYFOB_ARM_LED": "Keyfob",
+    "GENERIC_PROXY_TAG": "Tag",
     "OUTDOOR": "Outdoor",
     "VISONIC_PANEL": "Alarm Panel",
 }

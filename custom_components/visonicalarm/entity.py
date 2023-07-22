@@ -32,9 +32,11 @@ class BaseVisonicEntity:
         if hasattr(device, "location") and device.location:
             name = f"{device.location} {name}"
 
-        if SENSOR_TYPE_FRIENDLY_NAME[device.subtype] == "Keyfob":
-            if hasattr(device, "owner_name"):
+        if SENSOR_TYPE_FRIENDLY_NAME[device.subtype] in ["Keyfob", "Tag"]:
+            if hasattr(device, "owner_name") and device.owner_name:
                 name = f"{name} {device.owner_name}"
+            elif hasattr(device, "name") and device.name:
+                name = f"{name} {device.name}"
             else:
                 name = f"{name} {device.device_number}"
 
