@@ -150,7 +150,7 @@ class VisonicAlarmTemperatureSensor(VisonicAlarmSensor):
     @property
     def native_unit_of_measurement(self):
         """Return unit of temperature"""
-        return UnitOfTemperature.CELCIUS
+        return UnitOfTemperature.CELSIUS
 
 
 class VisonicAlarmLuxSensor(VisonicAlarmSensor):
