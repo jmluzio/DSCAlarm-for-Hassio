@@ -202,22 +202,22 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
 
     async def async_alarm_disarm(self, code=None):
         """Send disarm command."""
-        _LOGGER.debug("Disarming alarm...")
-        if self.coordinator.pin_required_disarm:
-            if code != self._code:
-                raise HomeAssistantError("Pin is required to disarm this alarm but no pin was provided")
-
-        process_token = await self.hass.async_add_executor_job(self._alarm.disarm)
-        self._disarm_in_progress = True
-        self._state = STATE_ALARM_DISARMING
-        self.async_write_ha_state()
-
-        if await self.async_wait_for_process_success(self.coordinator, process_token):
-            _LOGGER.debug("Disarming alarm completed successfully")
-            self._disarm_in_progress = False
-            await self.async_force_update()
+        if self.coordinator.pin_required_disarm and code != self._code:
+            raise HomeAssistantError("Pin is required to disarm this alarm but no pin was provided")
         else:
-            _LOGGER.error("Disarming alarm did not complete successfully.")
+            _LOGGER.debug("Disarming alarm...")
+
+            process_token = await self.hass.async_add_executor_job(self._alarm.disarm)
+            self._disarm_in_progress = True
+            self._state = STATE_ALARM_DISARMING
+            self.async_write_ha_state()
+
+            if await self.async_wait_for_process_success(self.coordinator, process_token):
+                _LOGGER.debug("Disarming alarm completed successfully")
+                self._disarm_in_progress = False
+                await self.async_force_update()
+            else:
+                _LOGGER.error("Disarming alarm did not complete successfully.")
 
     async def async_alarm_arm_home(self, code=None):
         """Send arm home command."""
@@ -229,40 +229,41 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
 
     async def async_alarm_arm(self, action: AlarmAction, code):
         """Arm Alarm"""
-        _LOGGER.debug("Arming alarm...")
         if self.coordinator.pin_required_arm and code != self._code:
             raise HomeAssistantError("Pin is required to arm this alarm but no pin was provided")
-
-        # Get current status of partition
-        await self.coordinator.async_update_status()
-        partition = self.coordinator.get_partition_status(self.partition_id)
-
-        if partition.ready:
-            try:
-                if action == AlarmAction.ARM_HOME:
-                    process_token = await self.hass.async_add_executor_job(self._alarm.arm_home)
-                elif action == AlarmAction.ARM_AWAY:
-                    process_token = await self.hass.async_add_executor_job(self._alarm.arm_away)
-
-                self._arm_in_progress = True
-                self._state = STATE_ALARM_ARMING
-                self.async_write_ha_state()
-
-                if await self.async_wait_for_process_success(self.coordinator, process_token):
-                    _LOGGER.debug("Arming alarm completed successfully")
-                    self._arm_in_progress = False
-                    await self.async_force_update()
-                else:
-                    self._arm_in_progress = False
-                    _LOGGER.error("%s did not complete successfully.", action)
-                    raise HomeAssistantError("There was an error setting the alarm")
-
-            except HomeAssistantError:
-                pass
-            except Exception as ex:
-                _LOGGER.error("Unable to complete %s.  Error is %s", action, ex)
-                raise HomeAssistantError("Unknown error setting the alarm") from ex
         else:
-            raise HomeAssistantError(
-                "The alarm system is not in a ready state. Maybe there are doors or windows open?"
-            )
+            _LOGGER.debug("Arming alarm...")
+
+            # Get current status of partition
+            await self.coordinator.async_update_status()
+            partition = self.coordinator.get_partition_status(self.partition_id)
+
+            if partition.ready:
+                try:
+                    if action == AlarmAction.ARM_HOME:
+                        process_token = await self.hass.async_add_executor_job(self._alarm.arm_home)
+                    elif action == AlarmAction.ARM_AWAY:
+                        process_token = await self.hass.async_add_executor_job(self._alarm.arm_away)
+
+                    self._arm_in_progress = True
+                    self._state = STATE_ALARM_ARMING
+                    self.async_write_ha_state()
+
+                    if await self.async_wait_for_process_success(self.coordinator, process_token):
+                        _LOGGER.debug("Arming alarm completed successfully")
+                        self._arm_in_progress = False
+                        await self.async_force_update()
+                    else:
+                        self._arm_in_progress = False
+                        _LOGGER.error("%s did not complete successfully.", action)
+                        raise HomeAssistantError("There was an error setting the alarm")
+
+                except HomeAssistantError:
+                    pass
+                except Exception as ex:
+                    _LOGGER.error("Unable to complete %s.  Error is %s", action, ex)
+                    raise HomeAssistantError("Unknown error setting the alarm") from ex
+            else:
+                raise HomeAssistantError(
+                    "The alarm system is not in a ready state. Maybe there are doors or windows open?"
+                )
