@@ -18,6 +18,8 @@ SWITCHES = [
         "function": "set_bypass_zone",
         "require_device_id": True,
     },
+]
+"""
     {
         "type": "panel",
         "name": "siren",
@@ -25,7 +27,7 @@ SWITCHES = [
         "off_function": "disable_siren",
         "require_device_id": False,
     },
-]
+"""
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -72,7 +74,7 @@ class VisonicAlarmSwitch(BaseVisonicEntity, CoordinatorEntity, SwitchEntity):
     @property
     def is_on(self) -> bool | None:
         """Return if is on."""
-        return self._is_on
+        return self._device.bypass
 
     @property
     def name(self):
@@ -92,11 +94,11 @@ class VisonicAlarmSwitch(BaseVisonicEntity, CoordinatorEntity, SwitchEntity):
         """Return icon"""
         return "mdi:motion-sensor-off"
 
-    async def async_turn_on(self):
+    async def async_turn_on(self, **kwargs):
         """Turn the device on."""
         return await self.async_set_switch(self._switch_info, True)
 
-    async def async_turn_off(self):
+    async def async_turn_off(self, **kwargs):
         """Turn the device off."""
         return await self.async_set_switch(self._switch_info, False)
 
