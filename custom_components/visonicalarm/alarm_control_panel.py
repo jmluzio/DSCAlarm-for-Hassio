@@ -83,12 +83,12 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
         self.coordinator = coordinator
         self._alarm = self.coordinator.alarm
         self._code = self.coordinator.config_entry.data[CONF_CODE]
-        self._partition = self.coordinator.get_partition_status(self.coordinator._partition_id)
+        self._partition = self.coordinator.get_partition_status(self.coordinator.partition_id)
         self._changed_by = None
         self._changed_timestamp = None
         self._arm_in_progress = False
         self._disarm_in_progress = False
-        self.partition_id = coordinator._partition_id
+        self.partition_id = coordinator.partition_id
         self._state = self.get_partition_state(self._partition)
 
     @property

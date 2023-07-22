@@ -55,7 +55,7 @@ class VisonicAlarmCoordinator(DataUpdateCoordinator):
         self.alarm_data = VisonicAlarmData()
         self.last_update = datetime.now()
 
-        self._partition_id = config_entry.data[CONF_PARTITION]
+        self.partition_id = config_entry.data[CONF_PARTITION]
         self.alarm: VisonicAlarm.Setup = None
         self.events: list[VisonicEvent] = []
         self.panel_info: VisonicPanel = None
