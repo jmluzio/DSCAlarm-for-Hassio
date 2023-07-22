@@ -33,11 +33,11 @@ def _async_get_diagnostics(
 
     # Panel Info
     diag_data.update({"RAW PANEL INFO": to_json(data.panel_info._data)})
-    diag_data.update({"PANEL INFO": to_json(data.panel_info, True)})
+    diag_data.update({"PANEL INFO": to_json(data.panel_info)})
 
     # Status
     diag_data.update({"RAW STATUS": to_json(data.status._data)})
-    diag_data.update({"STATUS": to_json(data.status, True)})
+    diag_data.update({"STATUS": to_json(data.status)})
 
     # Device info
     device_info = {}
@@ -47,20 +47,19 @@ def _async_get_diagnostics(
 
     device_info = {}
     for visonic_device in data.devices:
-        device_info.update({visonic_device.id: to_json(visonic_device, True)})
+        device_info.update({visonic_device.id: to_json(visonic_device)})
     diag_data.update({"DEVICES": device_info})
 
     return diag_data
 
 
-def to_json(obj, remove_data: bool = False):
+def to_json(obj):
     """Convert object to json."""
     result = json.dumps(obj, cls=ObjectEncoder, sort_keys=True, indent=2)
     result = json.loads(result)
 
-    if remove_data:
-        if result.get("_data"):
-            result.pop("_data")
+    if result.get("_data"):
+        result.pop("_data")
 
     result = anonymise_data(result)
     return result
