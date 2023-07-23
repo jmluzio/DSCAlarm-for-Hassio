@@ -187,16 +187,18 @@ class VisonicStatusSensor(VisonicAlarmSensor):
     @property
     def name(self):
         """Return the name of the sensor"""
-        return f"Partition {abs(self._partition_id)} Ready"
+        if len(self.coordinator.status.partitions) > 1:
+            return f"Partition {self.coordinator.get_partition_info_by_id(self._partition_id).name} Ready"
+        return "Partition Ready"
 
     @property
     def unique_id(self):
-        return f"{DOMAIN}-{self._alarm.panel_info.serial}-{abs(self._partition_id)}-{self.name}"
+        return f"{DOMAIN}-{self._alarm.panel_info.serial}-{self._partition_id}-{self.name}"
 
     @property
     def native_value(self):
         """Return the state of the entity."""
-        return self.coordinator.get_partition_by_id(self._partition_id).ready
+        return self.coordinator.get_partition_status_by_id(self._partition_id).ready
 
     @property
     def extra_state_attributes(self):
