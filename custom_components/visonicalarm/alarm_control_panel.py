@@ -46,7 +46,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the Visonic Alarm platform."""
     alarms = []
     coordinator = hass.data[DOMAIN][config_entry.entry_id][DATA]
-    for partition in coordinator.status.partitions:
+    for partition in [partition for partition in coordinator.panel_info.partitions if partition.active]:
         alarms.append(VisonicAlarm(coordinator, hass, partition.id))
     async_add_entities(alarms)
 
@@ -85,13 +85,14 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
         self.coordinator = coordinator
         self._alarm = self.coordinator.alarm
         self._code = self.coordinator.config_entry.data[CONF_CODE]
-        self._partition = self.coordinator.get_partition_by_id(partition_id)
+        self._partition = self.coordinator.get_partition_info_by_id(partition_id)
+        self._partition_status = self.coordinator.get_partition_status_by_id(partition_id)
         self._changed_by = None
         self._changed_timestamp = None
         self._arm_in_progress = False
         self._disarm_in_progress = False
         self._partition_id = partition_id
-        self._state = self.get_partition_state(self._partition)
+        self._state = self.get_partition_state(self._partition_status)
 
     @property
     def name(self):
@@ -110,7 +111,7 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
         attrs = super().state_attributes
         attrs[ATTR_SYSTEM_SERIAL_NUMBER] = self.coordinator.panel_info.serial
         attrs[ATTR_SYSTEM_MODEL] = self.coordinator.panel_info.model
-        attrs[ATTR_SYSTEM_READY] = self._partition.ready
+        attrs[ATTR_SYSTEM_READY] = self._partition_status.ready
         # ATTR_SYSTEM_CONNECTED: self._alarm.connected(),
         # ATTR_SYSTEM_SESSION_TOKEN: self._alarm.session_token,
         attrs[ATTR_SYSTEM_LAST_UPDATE] = self.coordinator.last_update
@@ -166,14 +167,25 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        self._partition = self.coordinator.get_partition_by_id(self._partition_id)
-        self._state = self.get_partition_state(self._partition)
+        self._partition = self.coordinator.get_partition_info_by_id(self._partition_id)
+        self._partition_status = self.coordinator.get_partition_status_by_id(self._partition_id)
+        self._state = self.get_partition_state(self._partition_status)
         self.async_write_ha_state()
 
-    def get_partition_state(self, partition) -> str | None:
+    def get_partition_ready(self, partition_id: int) -> bool:
+        """Return if partition is ready.  Handles multiple partitions"""
+        if len(self.coordinator.status.partitions) == 1:
+            return self.coordinator.get_partition_status_by_id(partition_id)
+
+        not_ready_partitions = [partition for partition in self.coordinator.status.partitions if not partition.ready]
+        if not_ready_partitions:
+            return False
+        return True
+
+    def get_partition_state(self, partition_status) -> str | None:
         """Get current state of partition"""
-        status = partition.status
-        state = partition.state
+        status = partition_status.status
+        state = partition_status.state
 
         if self._disarm_in_progress:
             return STATE_ALARM_DISARMING
@@ -205,7 +217,7 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
 
     async def async_alarm_disarm(self, code=None):
         """Send disarm command."""
-        if self.coordinator.pin_required_disarm and code != self._code:
+        if (not self._arm_in_progress) and (self.coordinator.pin_required_disarm and code != self._code):
             raise HomeAssistantError("Pin is required to disarm this alarm but no pin was provided")
         else:
             _LOGGER.debug("Disarming alarm...")
@@ -239,9 +251,7 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
 
             # Get current status of partition
             await self.coordinator.async_update_status()
-            partition = self.coordinator.get_partition_by_id(self._partition_id)
-
-            if partition.ready:
+            if self.get_partition_ready(self._partition_id):
                 try:
                     if action == AlarmAction.ARM_HOME:
                         process_token = await self.hass.async_add_executor_job(

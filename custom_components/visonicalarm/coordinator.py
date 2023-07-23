@@ -9,7 +9,8 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from pyvisonicalarm import alarm as VisonicAlarm
 from pyvisonicalarm.classes import Event as VisonicEvent
 from pyvisonicalarm.classes import Panel as VisonicPanel
-from pyvisonicalarm.classes import Partition as VisonicPartition
+from pyvisonicalarm.classes import Partition as VisonicPartitionStatus
+from pyvisonicalarm.classes import PanelInfoPartition as VisonicPartitionInfo
 from pyvisonicalarm.classes import Status as VisonicStatus
 from pyvisonicalarm.devices import Device as VisonicDevice
 from pyvisonicalarm.exceptions import UnauthorizedError, UserAuthRequiredError
@@ -125,7 +126,12 @@ class VisonicAlarmCoordinator(DataUpdateCoordinator):
         if process_status:
             return process_status[0]
 
-    def get_partition_by_id(self, partition_id) -> VisonicPartition:
+    def get_partition_info_by_id(self, partition_id) -> VisonicPartitionInfo:
+        """Get status of partition."""
+        if self.status and partition_id in [partition.id for partition in self.panel_info.partitions]:
+            return next(partition for partition in self.panel_info.partitions if partition.id == partition_id)
+
+    def get_partition_status_by_id(self, partition_id) -> VisonicPartitionStatus:
         """Get status of partition."""
         if self.status and partition_id in [partition.id for partition in self.status.partitions]:
             return next(partition for partition in self.status.partitions if partition.id == partition_id)
