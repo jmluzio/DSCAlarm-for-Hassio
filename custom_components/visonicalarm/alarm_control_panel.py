@@ -173,14 +173,8 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
         self.async_write_ha_state()
 
     def get_partition_ready(self, partition_id: int) -> bool:
-        """Return if partition is ready.  Handles multiple partitions"""
-        if len(self.coordinator.status.partitions) == 1:
-            return self.coordinator.get_partition_status_by_id(partition_id)
-
-        not_ready_partitions = [partition for partition in self.coordinator.status.partitions if not partition.ready]
-        if not_ready_partitions:
-            return False
-        return True
+        """Return if partition is ready."""
+        return self.coordinator.get_partition_status_by_id(partition_id)
 
     def get_partition_state(self, partition_status) -> str | None:
         """Get current state of partition"""
