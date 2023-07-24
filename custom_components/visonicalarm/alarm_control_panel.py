@@ -46,7 +46,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the Visonic Alarm platform."""
     alarms = []
     coordinator = hass.data[DOMAIN][config_entry.entry_id][DATA]
-    for partition in [partition for partition in coordinator.panel_info.partitions if partition.active]:
+    for partition in coordinator.status.partitions:
         alarms.append(VisonicAlarm(coordinator, hass, partition.id))
     async_add_entities(alarms)
 
