@@ -6,7 +6,7 @@
   "iot_class": "cloud_polling",
   "version": "v1.0.2",
   "requirements": [
-    "pyvisonicalarm==0.1.0b4"
+    "pyvisonicalarm==0.1.0b5"
   ],
   "dependencies": [],
   "codeowners": [
