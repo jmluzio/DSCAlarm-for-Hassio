@@ -81,21 +81,15 @@ class BaseVisonicEntity:
                 "model": self._device.subtype.replace("_", " ")
                 if self._device.subtype != "VISONIC_PANEL"
                 else self.coordinator.panel_info.model,
-                "serial_number": self._device.id,
-                "product_type": self._device.subtype,
-                "product_identifier": self._device.id,
                 "via_device": (
                     DOMAIN,
                     self.coordinator.config_entry.data[CONF_PANEL_ID],
-                ),
+                )
             }
         else:
             return {
                 "name": "Alarm Panel",
                 "identifiers": {(DOMAIN, f"{self.coordinator.config_entry.data[CONF_PANEL_ID]}")},
                 "manufacturer": "Visonic",
-                "model": self.coordinator.panel_info.model,
-                "serial_number": self.coordinator.panel_info.serial,
-                "product_type": "Alarm Panel",
-                "product_identifier": self.coordinator.panel_info.model,
+                "model": self.coordinator.panel_info.model
             }
