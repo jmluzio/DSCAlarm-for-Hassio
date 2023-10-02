@@ -1,4 +1,4 @@
-VERY BETA - FORK FROM And3rsl/VisonicAlarm-for-Hassio
+BETA - FORK FROM And3rsl/VisonicAlarm-for-Hassio
 
 TODO - Add readme info
 
@@ -14,4 +14,4 @@ Add the following link, and select integrations as the repository type.
 https://github.com/msp1974/VisonicAlarm-for-Hassio.git
 ```
 
-You should then be able to download this via the usual HACs install method.
+You should then be able to download this via the usual HACs install method and configure via the UI.
