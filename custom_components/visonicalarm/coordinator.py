@@ -6,7 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_CODE, CONF_EMAIL, CONF_HOST, CONF_PASSWORD, CONF_SCAN_INTERVAL, CONF_UUID
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from pyvisonicalarm import Alarm """as VisonicAlarm"""
+from pyvisonicalarm import Alarm as VisonicAlarm
 from pyvisonicalarm.classes import Event as VisonicEvent
 from pyvisonicalarm.classes import Panel as VisonicPanel
 from pyvisonicalarm.classes import Partition as VisonicPartitionStatus
@@ -34,13 +34,11 @@ class VisonicAlarmData:
     panel_info: VisonicPanel = None
     status: VisonicStatus = None
 
-class VisonicAlarm(Alarm):
-
+"""class VisonicAlarm(Alarm):
     def arm_stay(self, partition):
-        """ Arm in Home mode. """
         arm_info = {'partition': partition, 'state': 'STAY'}
         arm_json = json.dumps(arm_info, separators=(',', ':'))
-        return self.__send_request(self.__url_set_state, data_json=arm_json, request_type='POST')
+        return self.__send_request(self.__url_set_state, data_json=arm_json, request_type='POST')"""
 
 class VisonicAlarmCoordinator(DataUpdateCoordinator):
     """Data update coordinator."""
