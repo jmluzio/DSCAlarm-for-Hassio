@@ -249,7 +249,7 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
                 try:
                     if action == AlarmAction.ARM_HOME:
                         process_token = await self.hass.async_add_executor_job(
-                            self._alarm.arm_stay, self._partition_id
+                            self._alarm.arm_home, self._partition_id
                         )
                     elif action == AlarmAction.ARM_AWAY:
                         process_token = await self.hass.async_add_executor_job(
