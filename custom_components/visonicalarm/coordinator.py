@@ -34,7 +34,7 @@ class VisonicAlarmData:
     panel_info: VisonicPanel = None
     status: VisonicStatus = None
 
-class VisonicAlarm(alarm):
+class VisonicAlarm(Alarm):
 
     def arm_stay(self, partition):
         """ Arm in Home mode. """
