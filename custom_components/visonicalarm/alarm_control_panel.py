@@ -72,7 +72,7 @@ class AlarmState:
 
     DISARM = "DISARM"
     AWAY = "AWAY"
-    HOME = "HOME"
+    HOME = "STAY"
 
 
 class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity):
