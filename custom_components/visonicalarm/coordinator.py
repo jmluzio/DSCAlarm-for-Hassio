@@ -34,6 +34,13 @@ class VisonicAlarmData:
     panel_info: VisonicPanel = None
     status: VisonicStatus = None
 
+class VisonicAlarm(alarm):
+
+    def arm_stay(self, partition):
+        """ Arm in Home mode. """
+        arm_info = {'partition': partition, 'state': 'HOME'}
+        arm_json = json.dumps(arm_info, separators=(',', ':'))
+        return self.__send_request(self.__url_set_state, data_json=arm_json, request_type='POST')
 
 class VisonicAlarmCoordinator(DataUpdateCoordinator):
     """Data update coordinator."""
