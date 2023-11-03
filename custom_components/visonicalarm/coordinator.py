@@ -6,7 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_CODE, CONF_EMAIL, CONF_HOST, CONF_PASSWORD, CONF_SCAN_INTERVAL, CONF_UUID
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from pyvisonicalarm import alarm """as VisonicAlarm"""
+from pyvisonicalarm import Alarm """as VisonicAlarm"""
 from pyvisonicalarm.classes import Event as VisonicEvent
 from pyvisonicalarm.classes import Panel as VisonicPanel
 from pyvisonicalarm.classes import Partition as VisonicPartitionStatus
