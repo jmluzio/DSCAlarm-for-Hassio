@@ -55,7 +55,7 @@ class AlarmAction:
     """Alarm Actions"""
 
     DISARM = "DISARM"
-    ARM_HOME = "ARM_HOME"
+    ARM_HOME = "ARM_STAY"
     ARM_AWAY = "ARM_AWAY"
 
 
