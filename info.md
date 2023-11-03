@@ -11,7 +11,7 @@ In HACs, select integrations.  The select Custom Repositories from the 3 dots me
 Add the following link, and select integrations as the repository type.
 
 ```text
-https://github.com/msp1974/VisonicAlarm-for-Hassio.git
+https://github.com/jmluzio/DSCAlarm-for-Hassio.git
 ```
 
 You should then be able to download this via the usual HACs install method and configure via the UI.
