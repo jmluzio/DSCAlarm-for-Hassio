@@ -34,12 +34,6 @@ class VisonicAlarmData:
     panel_info: VisonicPanel = None
     status: VisonicStatus = None
 
-class DSCAlarm(VisonicAlarm):
-    def arm_home(self, partition):
-        arm_info = {'partition': partition, 'state': 'STAY'}
-        arm_json = json.dumps(arm_info, separators=(',', ':'))
-        return self.__send_request(self.__url_set_state, data_json=arm_json, request_type='POST')
-
 class VisonicAlarmCoordinator(DataUpdateCoordinator):
     """Data update coordinator."""
 
@@ -57,9 +51,10 @@ class VisonicAlarmCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=self.scan_interval),
         )
 
-        self.alarm_data = DSCAlarmData()
+        self.alarm_data = VisonicAlarmData()
         self.last_update = datetime.now()
-        self.alarm: DSCAlarm.Setup = None
+        self.alarm: VisonicAlarm.Setup = None
+        self.alarm.arm_stay = arm_stay
         self.events: list[VisonicEvent] = []
         self.panel_info: VisonicPanel = None
         self.status: VisonicStatus = None
@@ -72,7 +67,7 @@ class VisonicAlarmCoordinator(DataUpdateCoordinator):
         if not self.alarm:
             _LOGGER.debug("Initiating Visonic API")
             self.alarm = await self.hass.async_add_executor_job(
-                DSCAlarm.Setup,
+                VisonicAlarm.Setup,
                 self.config_entry.data[CONF_HOST],
                 self.config_entry.data[CONF_UUID],
             )
@@ -148,3 +143,8 @@ class VisonicAlarmCoordinator(DataUpdateCoordinator):
         for device in self.devices:
             if device.id == device_id:
                 return device
+
+    def arm_stay(self, partition):
+        arm_info = {'partition': partition, 'state': 'STAY'}
+        arm_json = json.dumps(arm_info, separators=(',', ':'))
+        return self.__send_request(self.__url_set_state, data_json=arm_json, request_type='POST')
