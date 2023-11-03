@@ -47,7 +47,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     alarms = []
     coordinator = hass.data[DOMAIN][config_entry.entry_id][DATA]
     for partition in coordinator.status.partitions:
-        alarms.append(DSCAlarm(coordinator, hass, partition.id))
+        alarms.append(VisonicAlarm(coordinator, hass, partition.id))
     async_add_entities(alarms)
 
 
@@ -75,7 +75,7 @@ class AlarmState:
     HOME = "STAY"
 
 
-class DSCAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity):
+class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity):
     """Representation of a Visonic Alarm control panel."""
 
     def __init__(self, coordinator, hass, partition_id: int):
