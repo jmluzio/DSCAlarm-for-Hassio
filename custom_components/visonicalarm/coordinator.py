@@ -60,7 +60,6 @@ class VisonicAlarmCoordinator(DataUpdateCoordinator):
         self.devices: list[VisonicDevice] = []
         self.pin_required_arm = config_entry.options.get(CONF_PIN_REQUIRED_ARM, True)
         self.pin_required_disarm = config_entry.options.get(CONF_PIN_REQUIRED_DISARM, True)
-        self.TEXT_STATUS_HOME = "STAY"
 
     async def validate_logged_in(self):
         """Validate logged in to account"""
