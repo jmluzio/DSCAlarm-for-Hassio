@@ -6,14 +6,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_CODE, CONF_EMAIL, CONF_HOST, CONF_PASSWORD, CONF_SCAN_INTERVAL, CONF_UUID
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from pyvisonicalarm import alarm as VisonicAlarm
-from pyvisonicalarm.classes import Event as VisonicEvent
-from pyvisonicalarm.classes import Panel as VisonicPanel
-from pyvisonicalarm.classes import Partition as VisonicPartitionStatus
-from pyvisonicalarm.classes import PanelInfoPartition as VisonicPartitionInfo
-from pyvisonicalarm.classes import Status as VisonicStatus
-from pyvisonicalarm.devices import Device as VisonicDevice
-from pyvisonicalarm.exceptions import UnauthorizedError, UserAuthRequiredError
+from pydscalarm import alarm as VisonicAlarm
+from pydscalarm.classes import Event as VisonicEvent
+from pydscalarm.classes import Panel as VisonicPanel
+from pydscalarm.classes import Partition as VisonicPartitionStatus
+from pydscalarm.classes import PanelInfoPartition as VisonicPartitionInfo
+from pydscalarm.classes import Status as VisonicStatus
+from pydscalarm.devices import Device as VisonicDevice
+from pydscalarm.exceptions import UnauthorizedError, UserAuthRequiredError
 
 from .const import (
     CONF_PANEL_ID,
