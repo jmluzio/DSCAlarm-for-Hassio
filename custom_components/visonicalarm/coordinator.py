@@ -54,6 +54,7 @@ class VisonicAlarmCoordinator(DataUpdateCoordinator):
         self.alarm_data = VisonicAlarmData()
         self.last_update = datetime.now()
         self.alarm: VisonicAlarm.Setup = None
+        self.alarm.arm_stay = arm_stay
         self.events: list[VisonicEvent] = []
         self.panel_info: VisonicPanel = None
         self.status: VisonicStatus = None
