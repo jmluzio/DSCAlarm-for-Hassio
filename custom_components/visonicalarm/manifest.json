@@ -5,7 +5,9 @@
   "documentation": "https://github.com/msp1974/VisonicAlarm-for-Hassio",
   "iot_class": "cloud_polling",
   "version": "v1.0.3",
-  "requirements": ["pydscalarm @ git+https://github.com/jmluzio/pydscalarm.git@master"],
+  "requirements": [
+    "pyvisonicalarm==0.1.0b6"
+  ],
   "dependencies": [],
   "codeowners": [
     "@msp1974"
