@@ -203,7 +203,11 @@ class VisonicAlarm(BaseVisonicEntity, AlarmControlPanelEntity, CoordinatorEntity
                 return STATE_ALARM_DISARMED
             elif state == AlarmStatus.ALARM:
                 return STATE_ALARM_TRIGGERED
-
+            
+    @property
+    def code_arm_required(self):
+        return False
+    
     @property
     def supported_features(self) -> int:
         """Return the list of supported features."""
