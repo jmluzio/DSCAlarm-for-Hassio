@@ -39,8 +39,7 @@ async def async_setup_entry(hass, config_entry):
     }
 
     # Setup platforms
-    for platform in VISONIC_PLATFORMS:
-        hass.async_add_job(hass.config_entries.async_forward_entry_setup(config_entry, platform))
+    await hass.config_entries.async_forward_entry_setups(config_entry, VISONIC_PLATFORMS)
 
     # Setup services
     # await async_setup_services(hass, coordinator)
